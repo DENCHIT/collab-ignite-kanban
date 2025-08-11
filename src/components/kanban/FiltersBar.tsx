@@ -1,0 +1,29 @@
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+
+export interface FiltersState {
+  q: string;
+  highScore: boolean;
+  recent: boolean;
+  mine: boolean;
+  blocked: boolean;
+}
+
+export function FiltersBar({ value, onChange }: { value: FiltersState; onChange: (v: FiltersState) => void }) {
+  return (
+    <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+      <Input
+        placeholder="Search ideas..."
+        className="max-w-md"
+        value={value.q}
+        onChange={(e) => onChange({ ...value, q: e.target.value })}
+      />
+      <div className="flex items-center gap-4 text-sm">
+        <label className="flex items-center gap-2"><Switch checked={value.highScore} onCheckedChange={(v) => onChange({ ...value, highScore: v, recent: v ? false : value.recent })} /> High score</label>
+        <label className="flex items-center gap-2"><Switch checked={value.recent} onCheckedChange={(v) => onChange({ ...value, recent: v, highScore: v ? false : value.highScore })} /> Recent</label>
+        <label className="flex items-center gap-2"><Switch checked={value.mine} onCheckedChange={(v) => onChange({ ...value, mine: v })} /> My ideas</label>
+        <label className="flex items-center gap-2"><Switch checked={value.blocked} onCheckedChange={(v) => onChange({ ...value, blocked: v })} /> Blocked</label>
+      </div>
+    </div>
+  );
+}
