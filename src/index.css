@@ -8,67 +8,62 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 262 83% 50%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand highlight: #61CE70 -> hsl(134 53% 59%) */
+    --primary: 134 53% 59%;
+    --primary-foreground: 0 0% 10%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 200 95% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 134 53% 59%;
+    --accent-foreground: 0 0% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262 83% 50%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 134 53% 59%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 134 53% 59%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 134 53% 59%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 262 83% 50%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Kanban semantic colors */
-    --col-backlog: 220 14% 96%;
-    --col-discussion: 200 80% 96%;
-    --col-production: 160 60% 95%;
-    --col-review: 45 95% 96%;
-    --col-roadblock: 0 84% 96%;
-    --col-done: 140 35% 96%;
+    /* Kanban semantic colors (dark-friendly) */
+    --col-backlog: 220 6% 12%;
+    --col-discussion: 134 25% 12%;
+    --col-production: 160 25% 12%;
+    --col-review: 45 30% 14%;
+    --col-roadblock: 0 35% 14%;
+    --col-done: 140 20% 12%;
 
     /* Signature gradient */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--accent) / 0.9));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary) / 1), hsl(134 60% 50% / 1));
 
     /* Shadows & motion */
     --shadow-elev: 0 10px 30px -10px hsl(var(--primary) / 0.25);
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
 
 
   .dark {

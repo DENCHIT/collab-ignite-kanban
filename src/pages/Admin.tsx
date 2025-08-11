@@ -6,14 +6,23 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Admin() {
   const [teamPass, setTeamPass] = useState("");
   const [adminPass, setAdminPass] = useState("");
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds({ toDiscussion: 5, toProduction: 10, toBacklog: 5 }));
 
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [email, setEmail] = useState("ed@zoby.ai");
+  const [boardName, setBoardName] = useState("");
+  const [boardSlug, setBoardSlug] = useState("");
+  const [boardPass, setBoardPass] = useState("");
+
   useEffect(() => {
-    // noop for now
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
   }, []);
 
   function exportCSV() {
@@ -32,6 +41,40 @@ export default function Admin() {
     URL.revokeObjectURL(url);
   }
 
+  function slugify(text: string) {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+
+  async function signInAdmin() {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) return toast({ title: "Sign-in error", description: error.message });
+    toast({ title: "Magic link sent", description: `Check ${email}` });
+  }
+
+  async function createBoard() {
+    if (userEmail !== "ed@zoby.ai") {
+      toast({ title: "Access denied", description: "Only ed@zoby.ai can create boards." });
+      return;
+    }
+    const slug = boardSlug || slugify(boardName);
+    if (!boardName || !slug || !boardPass) {
+      toast({ title: "Missing fields", description: "Enter name, slug, and passcode." });
+      return;
+    }
+    const { data: userData } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("boards")
+      .insert({ slug, name: boardName, passcode: boardPass, created_by: userData.user?.id, created_by_email: userData.user?.email ?? null })
+      .select()
+      .single();
+    if (error) return toast({ title: "Create failed", description: error.message });
+    const link = `${window.location.origin}/b/${data.slug}`;
+    toast({ title: "Board created", description: `Share link ${link}` });
+    setBoardSlug(data.slug);
+  }
   return (
     <main className="container mx-auto py-6 space-y-6">
       <h1 className="text-2xl font-semibold">Admin Panel</h1>

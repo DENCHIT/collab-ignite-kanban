@@ -19,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Header />
         <Routes>
+          <Route path="/b/:slug" element={<BoardPage />} />
           <Route path="/" element={<BoardPage />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

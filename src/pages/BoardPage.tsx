@@ -5,19 +5,48 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Board } from "@/components/kanban/Board";
 import { getAdminPasscode, getDisplayName, getTeamPasscode, setAdminPasscode, setDisplayName, setIsAdmin, setTeamPasscode } from "@/lib/session";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function BoardPage() {
   const [hasAccess, setHasAccess] = useState<boolean>(false);
   const [step, setStep] = useState<"passcode" | "name" | "board">("passcode");
   const [passcode, setPasscode] = useState("");
   const [name, setNameInput] = useState("");
+  const { slug } = useParams<{ slug?: string }>();
 
   useEffect(() => {
     const savedName = getDisplayName();
     if (savedName) setNameInput(savedName);
-  }, []);
+    // If user already unlocked this board, skip passcode step
+    const localPass = getTeamPasscode(slug);
+    if (localPass) {
+      setHasAccess(true);
+      setStep("name");
+    }
+  }, [slug]);
 
-  function handlePasscode() {
+  async function handlePasscode() {
+    if (slug) {
+      const { data, error } = await supabase.rpc('verify_board_passcode', { _slug: slug, _passcode: passcode });
+      if (error) {
+        toast({ title: "Error verifying passcode", description: error.message });
+        return;
+      }
+      if (data === true) {
+        setTeamPasscode(passcode, slug);
+        toast({ title: "Access granted" });
+        setHasAccess(true);
+        setStep("name");
+      } else if (passcode === getAdminPasscode()) {
+        setIsAdmin(true);
+        setHasAccess(true);
+        setStep("name");
+      } else {
+        toast({ title: "Wrong passcode" });
+      }
+      return;
+    }
     const teamCode = getTeamPasscode();
     if (!teamCode) {
       // First admin visit: set initial passcode
@@ -62,7 +91,7 @@ export default function BoardPage() {
                     <Button onClick={handlePasscode} className="flex-1">Continue</Button>
                     <Button variant="secondary" onClick={() => { setIsAdmin(false); setPasscode(""); }}>Reset</Button>
                   </div>
-                  <p className="text-sm text-muted-foreground">Tip: first user can set the passcode. Admins can also unlock with the admin passcode from /admin.</p>
+                  <p className="text-sm text-muted-foreground">Tip: For shared boards, enter the passcode provided by your admin. Admins can also unlock with the admin passcode from /admin.</p>
                 </>
               )}
               {step === "name" && (
@@ -81,7 +110,7 @@ export default function BoardPage() {
 
   return (
     <main className="container mx-auto py-6">
-      <Board />
+      <Board boardSlug={slug} />
     </main>
   );
 }

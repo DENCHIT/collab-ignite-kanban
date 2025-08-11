@@ -6,6 +6,10 @@ const ADMIN_FLAG_KEY = "kanban_is_admin";
 const IDEAS_KEY = "kanban_ideas";
 const THRESHOLDS_KEY = "kanban_thresholds";
 
+function scopedKey(base: string, slug?: string) {
+  return slug ? `${base}:${slug}` : base;
+}
+
 export const storage = {
   get<T>(key: string, fallback: T): T {
     try {
@@ -26,11 +30,11 @@ export const storage = {
   },
 };
 
-export function getTeamPasscode(): string | null {
-  return storage.getRaw(TEAM_PASSCODE_KEY);
+export function getTeamPasscode(boardSlug?: string): string | null {
+  return storage.getRaw(scopedKey(TEAM_PASSCODE_KEY, boardSlug));
 }
-export function setTeamPasscode(code: string) {
-  storage.setRaw(TEAM_PASSCODE_KEY, code);
+export function setTeamPasscode(code: string, boardSlug?: string) {
+  storage.setRaw(scopedKey(TEAM_PASSCODE_KEY, boardSlug), code);
 }
 
 export function getAdminPasscode(): string | null {
@@ -63,16 +67,16 @@ export function isAdmin(): boolean {
   return storage.getRaw(ADMIN_FLAG_KEY) === "true";
 }
 
-export function saveIdeas(data: unknown) {
-  storage.set(IDEAS_KEY, data);
+export function saveIdeas(data: unknown, boardSlug?: string) {
+  storage.set(scopedKey(IDEAS_KEY, boardSlug), data);
 }
-export function loadIdeas<T>(fallback: T): T {
-  return storage.get(IDEAS_KEY, fallback);
+export function loadIdeas<T>(fallback: T, boardSlug?: string): T {
+  return storage.get(scopedKey(IDEAS_KEY, boardSlug), fallback);
 }
 
-export function saveThresholds(data: unknown) {
-  storage.set(THRESHOLDS_KEY, data);
+export function saveThresholds(data: unknown, boardSlug?: string) {
+  storage.set(scopedKey(THRESHOLDS_KEY, boardSlug), data);
 }
-export function loadThresholds<T>(fallback: T): T {
-  return storage.get(THRESHOLDS_KEY, fallback);
+export function loadThresholds<T>(fallback: T, boardSlug?: string): T {
+  return storage.get(scopedKey(THRESHOLDS_KEY, boardSlug), fallback);
 }

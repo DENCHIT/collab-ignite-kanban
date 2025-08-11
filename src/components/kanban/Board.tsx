@@ -44,15 +44,15 @@ const initialIdeas: Idea[] = [
   },
 ];
 
-export function Board() {
-  const [thresholds] = useState<Thresholds>(loadThresholds(defaultThresholds));
-  const [ideas, setIdeas] = useState<Idea[]>(loadIdeas<Idea[]>(initialIdeas));
+export function Board({ boardSlug }: { boardSlug?: string }) {
+  const [thresholds] = useState<Thresholds>(loadThresholds(defaultThresholds, boardSlug));
+  const [ideas, setIdeas] = useState<Idea[]>(loadIdeas<Idea[]>(initialIdeas, boardSlug));
   const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false });
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
 
   useEffect(() => {
-    saveIdeas(ideas);
-  }, [ideas]);
+    saveIdeas(ideas, boardSlug);
+  }, [ideas, boardSlug]);
 
   const grouped = useMemo(() => {
     const buckets: Record<IdeaStatus, Idea[]> = {
