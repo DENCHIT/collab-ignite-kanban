@@ -14,13 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      boards: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          id: string
+          name: string
+          passcode: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          name: string
+          passcode: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          id?: string
+          name?: string
+          passcode?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_board_passcode: {
+        Args: { _slug: string; _passcode: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
