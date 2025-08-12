@@ -28,19 +28,18 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy via FTP/FTPS/SFTP
+      - name: Deploy via SFTP
         uses: SamKirkland/FTP-Deploy-Action@v4
         with:
           server: ${{ secrets.HOSTINGER_FTP_HOST }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          protocol: ${{ secrets.HOSTINGER_FTP_PROTOCOL || 'ftps' }} # options: ftp, ftps, sftp
-          port: ${{ secrets.HOSTINGER_FTP_PORT || 21 }}
-          server-dir: ${{ secrets.HOSTINGER_FTP_SERVER_DIR }} # e.g. /domains/boards.zoby.ai/public_html/
+          protocol: sftp
+          port: 22
+          server-dir: /public_html/boards.zoby.ai/
           local-dir: dist
           log-level: standard
-          # Uncomment to wipe target before upload
-          # dangerous-clean-slate: true
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.github/**
