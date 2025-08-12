@@ -1,10 +1,11 @@
 name: Deploy to Hostinger
 
 
+  
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+    Workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
