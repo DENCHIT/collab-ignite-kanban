@@ -1,11 +1,9 @@
 name: Deploy to Hostinger
 
-
-  
 on:
   push:
     branches: [ main ]
-    Workflow_dispatch:
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -30,14 +28,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy via SFTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.HOSTINGER_FTP_HOST }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-         protocol: ftp
+          protocol: ftp
           port: 21
           server-dir: /public_html/boards.zoby.ai/
           local-dir: dist
@@ -47,5 +44,6 @@ jobs:
             **/.git*
             **/.github/**
             **/node_modules/**
+
     
       
