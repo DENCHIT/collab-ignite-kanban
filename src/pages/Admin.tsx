@@ -15,14 +15,21 @@ export default function Admin() {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [email, setEmail] = useState("ed@zoby.ai");
+  const [password, setPassword] = useState("");
   const [boardName, setBoardName] = useState("");
   const [boardSlug, setBoardSlug] = useState("");
   const [boardPass, setBoardPass] = useState("");
-
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
     });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    document.title = "Admin Panel — Kanban Boards";
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   function exportCSV() {
@@ -49,9 +56,33 @@ export default function Admin() {
   }
 
   async function signInAdmin() {
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (email !== "ed@zoby.ai") {
+      toast({ title: "Access denied", description: "Only ed@zoby.ai can sign in as admin." });
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return toast({ title: "Sign-in error", description: error.message });
-    toast({ title: "Magic link sent", description: `Check ${email}` });
+    toast({ title: "Signed in", description: `Welcome ${email}` });
+  }
+
+  async function signUpAdmin() {
+    if (email !== "ed@zoby.ai") {
+      toast({ title: "Sign-up blocked", description: "Only ed@zoby.ai can be the admin." });
+      return;
+    }
+    const redirectUrl = `${window.location.origin}/admin`;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectUrl }
+    });
+    if (error) return toast({ title: "Sign-up error", description: error.message });
+    toast({ title: "Check your email", description: "Confirm to complete sign up." });
+  }
+
+  async function signOutAdmin() {
+    await supabase.auth.signOut();
+    setUserEmail(null);
   }
 
   async function createBoard() {
@@ -75,9 +106,49 @@ export default function Admin() {
     toast({ title: "Board created", description: `Share link ${link}` });
     setBoardSlug(data.slug);
   }
+  if (userEmail !== "ed@zoby.ai") {
+    return (
+      <main className="container mx-auto py-6 space-y-6">
+        <h1 className="text-2xl font-semibold">Admin Login</h1>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sign in</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ed@zoby.ai" />
+              </div>
+              <div>
+                <Label>Password</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={signInAdmin}>Sign in</Button>
+              <Button variant="secondary" onClick={signUpAdmin}>Create admin account</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
   return (
     <main className="container mx-auto py-6 space-y-6">
       <h1 className="text-2xl font-semibold">Admin Panel</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Session</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+          <div className="text-sm">Signed in as {userEmail}</div>
+          <Button variant="secondary" onClick={signOutAdmin}>Sign out</Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -96,6 +167,29 @@ export default function Admin() {
               <Button className="mt-2" onClick={() => { setAdminPasscode(adminPass); setIsAdmin(true); toast({ title: "Admin passcode updated" }); }}>Save</Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Board</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Name</Label>
+              <Input value={boardName} onChange={(e) => setBoardName(e.target.value)} placeholder="Client Feedback" />
+            </div>
+            <div>
+              <Label>Slug</Label>
+              <Input value={boardSlug} onChange={(e) => setBoardSlug(e.target.value)} placeholder="client-feedback" />
+            </div>
+            <div>
+              <Label>Board passcode</Label>
+              <Input type="password" value={boardPass} onChange={(e) => setBoardPass(e.target.value)} placeholder="Set board passcode" />
+            </div>
+          </div>
+          <Button onClick={createBoard}>Create board</Button>
         </CardContent>
       </Card>
 
@@ -131,4 +225,5 @@ export default function Admin() {
       </Card>
     </main>
   );
+
 }
