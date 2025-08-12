@@ -1,9 +1,9 @@
+
 name: Deploy to Hostinger
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -37,7 +37,7 @@ jobs:
           protocol: ftp
           port: 21
           server-dir: /public_html/boards.zoby.ai/
-          local-dir: dist
+          local-dir: dist/
           log-level: standard
           dangerous-clean-slate: true
           exclude: |
