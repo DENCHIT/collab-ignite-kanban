@@ -74,10 +74,10 @@ export function Column({
                   </Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="secondary" onClick={() => onVote(it.id, 1)}>Upvote</Button>
-                <Button size="sm" variant="secondary" onClick={() => onVote(it.id, -1)}>Downvote</Button>
-                <Button size="sm" onClick={() => onOpen(it)}>Details</Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" onClick={() => onVote(it.id, 1)}>Upvote</Button>
+                <Button size="sm" variant="secondary" className="flex-1 sm:flex-none" onClick={() => onVote(it.id, -1)}>Downvote</Button>
+                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => onOpen(it)}>Details</Button>
               </div>
               <div className="text-[10px]">Updated {new Date(it.lastActivityAt).toLocaleString()}</div>
             </CardContent>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
@@ -19,6 +20,8 @@ export default function Admin() {
   const [boardName, setBoardName] = useState("");
   const [boardSlug, setBoardSlug] = useState("");
   const [boardPass, setBoardPass] = useState("");
+  const [boards, setBoards] = useState<any[]>([]);
+  const [loadingBoards, setLoadingBoards] = useState(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email ?? null);
@@ -31,6 +34,8 @@ export default function Admin() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => { if (userEmail === "ed@zoby.ai") { fetchBoards(); } }, [userEmail]);
 
   function exportCSV() {
     const ideas = loadIdeas<Idea[]>([]);
@@ -85,6 +90,20 @@ export default function Admin() {
     setUserEmail(null);
   }
 
+  async function fetchBoards() {
+    setLoadingBoards(true);
+    const { data, error } = await supabase
+      .from("boards")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast({ title: "Load boards failed", description: error.message });
+    } else {
+      setBoards(data ?? []);
+    }
+    setLoadingBoards(false);
+  }
+
   async function createBoard() {
     if (userEmail !== "ed@zoby.ai") {
       toast({ title: "Access denied", description: "Only ed@zoby.ai can create boards." });
@@ -105,6 +124,7 @@ export default function Admin() {
     const link = `${window.location.origin}/b/${data.slug}`;
     toast({ title: "Board created", description: `Share link ${link}` });
     setBoardSlug(data.slug);
+    fetchBoards();
   }
   if (userEmail !== "ed@zoby.ai") {
     return (
@@ -214,6 +234,48 @@ export default function Admin() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Boards</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingBoards ? (
+            <div className="text-sm text-muted-foreground">Loading boards...</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableCaption>All boards</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Link</TableHead>
+                    <TableHead>Passcode</TableHead>
+                    <TableHead>Ideas</TableHead>
+                    <TableHead>Votes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {boards.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="font-medium">{b.name}</TableCell>
+                      <TableCell>{b.slug}</TableCell>
+                      <TableCell>
+                        <a href={`/b/${b.slug}`} className="underline" target="_blank" rel="noreferrer">
+                          {`${window.location.origin}/b/${b.slug}`}
+                        </a>
+                      </TableCell>
+                      <TableCell>{b.passcode}</TableCell>
+                      <TableCell>—</TableCell>
+                      <TableCell>—</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Data</CardTitle>
