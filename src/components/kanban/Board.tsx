@@ -129,6 +129,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   }
 
   function move(id: string, to: IdeaStatus, reason?: string) {
+    console.log('Moving idea', id, 'to', to);
     setIdeas((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
@@ -141,6 +142,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         if (to === "roadblock") updated.blockedReason = reason || "";
         if (from === "roadblock" && to !== "roadblock") updated.blockedReason = undefined;
         updated = logHistory(updated, { type: "moved", user: getDisplayName() ?? "Anonymous", timestamp: updated.lastActivityAt, from, to, details: reason });
+        console.log('Updated idea:', updated);
         return updated;
       })
     );
