@@ -75,7 +75,11 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         if (filters.recent) return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
         return 0;
       })
-      .forEach((it) => buckets[it.status].push(it));
+      .forEach((it) => {
+        if (buckets[it.status]) {
+          buckets[it.status].push(it);
+        }
+      });
 
     return buckets;
   }, [ideas, filters]);
