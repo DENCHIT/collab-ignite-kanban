@@ -1,5 +1,4 @@
-import { useCallback, useRef } from "react";
-import Sortable from "sortablejs";
+import { ReactSortable } from "react-sortablejs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,12 @@ const statusClass: Record<IdeaStatus, string> = {
   roadblock: "border-l-4 border-l-destructive",
   done: "border-l-4 border-l-primary",
 };
+
+interface SortableIdea extends Idea {
+  id: string;
+  chosen?: boolean;
+  selected?: boolean;
+}
 
 export function Column({
   title,
@@ -29,43 +34,10 @@ export function Column({
   onVote: (id: string, delta: 1 | -1) => void;
   onOpen: (idea: Idea) => void;
 }) {
-  const sortableRef = useRef<Sortable | null>(null);
-  const onMoveRef = useRef(onMove);
-  
-  // Update the ref when onMove changes, but don't recreate sortable
-  onMoveRef.current = onMove;
-
-  const listRefCallback = useCallback((el: HTMLDivElement | null) => {
-    // Clean up previous sortable
-    if (sortableRef.current) {
-      sortableRef.current.destroy();
-      sortableRef.current = null;
-    }
-
-    if (!el) return;
-
-    // Create new sortable instance
-    sortableRef.current = new Sortable(el, {
-      group: "ideas",
-      animation: 150,
-      ghostClass: "opacity-50",
-      chosenClass: "sortable-chosen",
-      dragClass: "sortable-drag",
-      onEnd: (evt) => {
-        const id = (evt.item as HTMLElement).dataset.id;
-        if (!id) return;
-        const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
-        
-        // Use the latest onMove function via ref
-        if (to === "roadblock") {
-          const reason = prompt("Reason for roadblock?") || undefined;
-          onMoveRef.current(id, to, reason);
-        } else {
-          onMoveRef.current(id, to);
-        }
-      },
-    });
-  }, []);
+  const sortableIdeas: SortableIdea[] = ideas.map(idea => ({
+    ...idea,
+    id: idea.id,
+  }));
 
   return (
     <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
@@ -73,13 +45,28 @@ export function Column({
         <div className="text-sm font-medium">{title}</div>
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
-      <div 
-        ref={listRefCallback} 
-        data-status={status} 
-        className="p-2 space-y-2 min-h-[120px]" 
-        aria-live="polite"
+      <ReactSortable
+        list={sortableIdeas}
+        setList={() => {}} // Don't use setList to avoid conflicts
+        group="ideas"
+        animation={150}
+        ghostClass="opacity-50"
+        className="p-2 space-y-2 min-h-[120px]"
+        data-status={status}
+        onEnd={(evt) => {
+          const id = (evt.item as HTMLElement).dataset.id;
+          if (!id) return;
+          const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
+          
+          if (to === "roadblock") {
+            const reason = prompt("Reason for roadblock?") || undefined;
+            onMove(id, to, reason);
+          } else {
+            onMove(id, to);
+          }
+        }}
       >
-        {ideas.map((it) => (
+        {sortableIdeas.map((it) => (
           <Card 
             key={it.id} 
             data-id={it.id} 
@@ -126,7 +113,7 @@ export function Column({
             </CardContent>
           </Card>
         ))}
-      </div>
+      </ReactSortable>
     </div>
   );
 }
