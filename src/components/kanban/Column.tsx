@@ -38,16 +38,23 @@ export function Column({
       group: "ideas",
       animation: 150,
       ghostClass: "opacity-50",
+      forceFallback: true,
+      fallbackOnBody: true,
+      swapThreshold: 0.65,
       onEnd: (evt) => {
         const id = (evt.item as HTMLElement).dataset.id;
         if (!id) return;
         const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
-        if (to === "roadblock") {
-          const reason = prompt("Reason for roadblock?") || undefined;
-          onMove(id, to, reason);
-        } else {
-          onMove(id, to);
-        }
+        
+        // Delay state update to allow SortableJS to complete DOM cleanup
+        setTimeout(() => {
+          if (to === "roadblock") {
+            const reason = prompt("Reason for roadblock?") || undefined;
+            onMove(id, to, reason);
+          } else {
+            onMove(id, to);
+          }
+        }, 0);
       },
     });
     return () => sortable.destroy();
