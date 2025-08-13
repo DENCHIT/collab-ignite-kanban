@@ -30,25 +30,16 @@ export function Column({
   onOpen: (idea: Idea) => void;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
-  const sortableRef = useRef<Sortable | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragKey, setDragKey] = useState(0);
 
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current;
     
-    // Destroy previous sortable instance
-    if (sortableRef.current) {
-      sortableRef.current.destroy();
-    }
-    
-    sortableRef.current = new Sortable(el, {
+    const sortable = new Sortable(el, {
       group: "ideas",
       animation: 150,
       ghostClass: "opacity-50",
-      chosenClass: "sortable-chosen",
-      dragClass: "sortable-drag",
       forceFallback: true,
       fallbackOnBody: true,
       swapThreshold: 0.65,
@@ -56,34 +47,26 @@ export function Column({
         setIsDragging(true);
       },
       onEnd: (evt) => {
+        setIsDragging(false);
+        
         const id = (evt.item as HTMLElement).dataset.id;
         if (!id) return;
         const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
         
-        setIsDragging(false);
-        
-        // Force React to recreate the list after drag operation
-        setDragKey(prev => prev + 1);
-        
-        // Use requestAnimationFrame to ensure DOM operations complete
-        requestAnimationFrame(() => {
+        // Use setTimeout to allow SortableJS to complete its DOM operations
+        setTimeout(() => {
           if (to === "roadblock") {
             const reason = prompt("Reason for roadblock?") || undefined;
             onMove(id, to, reason);
           } else {
             onMove(id, to);
           }
-        });
+        }, 10);
       },
     });
     
-    return () => {
-      if (sortableRef.current) {
-        sortableRef.current.destroy();
-        sortableRef.current = null;
-      }
-    };
-  }, [onMove, dragKey]);
+    return () => sortable.destroy();
+  }, [onMove]);
 
   return (
     <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
@@ -96,11 +79,10 @@ export function Column({
         data-status={status} 
         className="p-2 space-y-2 min-h-[120px]" 
         aria-live="polite"
-        key={`${status}-${dragKey}`}
       >
         {ideas.map((it) => (
           <Card 
-            key={`${it.id}-${dragKey}`} 
+            key={it.id} 
             data-id={it.id} 
             className={`${statusClass[status]} cursor-grab active:cursor-grabbing`}
             style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
