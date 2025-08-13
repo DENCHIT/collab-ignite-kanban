@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import Sortable from "sortablejs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,58 +29,43 @@ export function Column({
   onVote: (id: string, delta: 1 | -1) => void;
   onOpen: (idea: Idea) => void;
 }) {
-  const listRef = useRef<HTMLDivElement | null>(null);
   const sortableRef = useRef<Sortable | null>(null);
+  const onMoveRef = useRef(onMove);
+  
+  // Update the ref when onMove changes, but don't recreate sortable
+  onMoveRef.current = onMove;
 
-  useEffect(() => {
-    if (!listRef.current) return;
-    const el = listRef.current;
-    
-    // Clean up previous instance
+  const listRefCallback = useCallback((el: HTMLDivElement | null) => {
+    // Clean up previous sortable
     if (sortableRef.current) {
       sortableRef.current.destroy();
+      sortableRef.current = null;
     }
-    
+
+    if (!el) return;
+
+    // Create new sortable instance
     sortableRef.current = new Sortable(el, {
       group: "ideas",
       animation: 150,
       ghostClass: "opacity-50",
-      // Disable React's ability to interfere with drag operations
-      onStart: () => {
-        // Mark all sortable containers to prevent React updates during drag
-        document.querySelectorAll('[data-status]').forEach(container => {
-          (container as HTMLElement).style.pointerEvents = 'none';
-        });
-      },
+      chosenClass: "sortable-chosen",
+      dragClass: "sortable-drag",
       onEnd: (evt) => {
-        // Re-enable React interactions
-        document.querySelectorAll('[data-status]').forEach(container => {
-          (container as HTMLElement).style.pointerEvents = 'auto';
-        });
-        
         const id = (evt.item as HTMLElement).dataset.id;
         if (!id) return;
         const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
         
-        // Defer the state update to next tick to avoid DOM conflicts
-        setTimeout(() => {
-          if (to === "roadblock") {
-            const reason = prompt("Reason for roadblock?") || undefined;
-            onMove(id, to, reason);
-          } else {
-            onMove(id, to);
-          }
-        }, 50);
+        // Use the latest onMove function via ref
+        if (to === "roadblock") {
+          const reason = prompt("Reason for roadblock?") || undefined;
+          onMoveRef.current(id, to, reason);
+        } else {
+          onMoveRef.current(id, to);
+        }
       },
     });
-    
-    return () => {
-      if (sortableRef.current) {
-        sortableRef.current.destroy();
-        sortableRef.current = null;
-      }
-    };
-  }, [onMove]);
+  }, []);
 
   return (
     <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
@@ -89,7 +74,7 @@ export function Column({
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
       <div 
-        ref={listRef} 
+        ref={listRefCallback} 
         data-status={status} 
         className="p-2 space-y-2 min-h-[120px]" 
         aria-live="polite"
