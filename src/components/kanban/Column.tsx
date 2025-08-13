@@ -54,9 +54,27 @@ export function Column({
         className="p-2 space-y-2 min-h-[120px]"
         data-status={status}
         onEnd={(evt) => {
+          console.log('Drag ended', evt);
+          console.log('evt.item:', evt.item);
+          console.log('evt.to:', evt.to);
+          
           const id = (evt.item as HTMLElement).dataset.id;
-          if (!id) return;
+          console.log('Item ID from dataset:', id);
+          
+          if (!id) {
+            console.error('No ID found on dragged item');
+            return;
+          }
+          
           const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
+          console.log('Target status from dataset:', to);
+          
+          if (!to) {
+            console.error('No target status found');
+            return;
+          }
+          
+          console.log('Calling onMove with:', id, to);
           
           if (to === "roadblock") {
             const reason = prompt("Reason for roadblock?") || undefined;
