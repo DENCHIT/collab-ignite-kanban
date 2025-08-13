@@ -30,30 +30,39 @@ export function Column({
   onOpen: (idea: Idea) => void;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const sortableRef = useRef<Sortable | null>(null);
 
   useEffect(() => {
     if (!listRef.current) return;
     const el = listRef.current;
     
-    const sortable = new Sortable(el, {
+    // Clean up previous instance
+    if (sortableRef.current) {
+      sortableRef.current.destroy();
+    }
+    
+    sortableRef.current = new Sortable(el, {
       group: "ideas",
       animation: 150,
       ghostClass: "opacity-50",
-      forceFallback: true,
-      fallbackOnBody: true,
-      swapThreshold: 0.65,
+      // Disable React's ability to interfere with drag operations
       onStart: () => {
-        setIsDragging(true);
+        // Mark all sortable containers to prevent React updates during drag
+        document.querySelectorAll('[data-status]').forEach(container => {
+          (container as HTMLElement).style.pointerEvents = 'none';
+        });
       },
       onEnd: (evt) => {
-        setIsDragging(false);
+        // Re-enable React interactions
+        document.querySelectorAll('[data-status]').forEach(container => {
+          (container as HTMLElement).style.pointerEvents = 'auto';
+        });
         
         const id = (evt.item as HTMLElement).dataset.id;
         if (!id) return;
         const to = (evt.to as HTMLElement).dataset.status as IdeaStatus;
         
-        // Use setTimeout to allow SortableJS to complete its DOM operations
+        // Defer the state update to next tick to avoid DOM conflicts
         setTimeout(() => {
           if (to === "roadblock") {
             const reason = prompt("Reason for roadblock?") || undefined;
@@ -61,11 +70,16 @@ export function Column({
           } else {
             onMove(id, to);
           }
-        }, 10);
+        }, 50);
       },
     });
     
-    return () => sortable.destroy();
+    return () => {
+      if (sortableRef.current) {
+        sortableRef.current.destroy();
+        sortableRef.current = null;
+      }
+    };
   }, [onMove]);
 
   return (
@@ -85,7 +99,6 @@ export function Column({
             key={it.id} 
             data-id={it.id} 
             className={`${statusClass[status]} cursor-grab active:cursor-grabbing`}
-            style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
           >
             <CardHeader className="p-3">
               <CardTitle className="text-sm">{it.title}</CardTitle>
@@ -105,7 +118,6 @@ export function Column({
                   variant="secondary" 
                   className="flex-1 sm:flex-none" 
                   onClick={() => onVote(it.id, 1)}
-                  disabled={isDragging}
                 >
                   Upvote
                 </Button>
@@ -114,7 +126,6 @@ export function Column({
                   variant="secondary" 
                   className="flex-1 sm:flex-none" 
                   onClick={() => onVote(it.id, -1)}
-                  disabled={isDragging}
                 >
                   Downvote
                 </Button>
@@ -122,7 +133,6 @@ export function Column({
                   size="sm" 
                   className="flex-1 sm:flex-none" 
                   onClick={() => onOpen(it)}
-                  disabled={isDragging}
                 >
                   Details
                 </Button>
