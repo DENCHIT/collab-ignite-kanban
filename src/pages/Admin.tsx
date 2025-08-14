@@ -17,6 +17,8 @@ export default function Admin() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [email, setEmail] = useState("ed@zoby.ai");
   const [password, setPassword] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
   const [boardName, setBoardName] = useState("");
   const [boardSlug, setBoardSlug] = useState("");
   const [boardPass, setBoardPass] = useState("");
@@ -85,6 +87,29 @@ export default function Admin() {
     toast({ title: "Check your email", description: "Confirm to complete sign up." });
   }
 
+  async function resetPassword() {
+    if (!resetEmail) {
+      toast({ title: "Email required", description: "Please enter your email address." });
+      return;
+    }
+    
+    const redirectUrl = `${window.location.origin}/admin`;
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: redirectUrl
+    });
+    
+    if (error) {
+      toast({ title: "Reset failed", description: error.message });
+    } else {
+      toast({ 
+        title: "Check your email", 
+        description: "We've sent you a password reset link." 
+      });
+      setShowForgotPassword(false);
+      setResetEmail("");
+    }
+  }
+
   async function signOutAdmin() {
     await supabase.auth.signOut();
     setUserEmail(null);
@@ -133,23 +158,60 @@ export default function Admin() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Sign in</CardTitle>
+            <CardTitle>{showForgotPassword ? "Reset Password" : "Sign in"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ed@zoby.ai" />
-              </div>
-              <div>
-                <Label>Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={signInAdmin}>Sign in</Button>
-              <Button variant="secondary" onClick={signUpAdmin}>Create admin account</Button>
-            </div>
+            {!showForgotPassword ? (
+              <>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ed@zoby.ai" />
+                  </div>
+                  <div>
+                    <Label>Password</Label>
+                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={signInAdmin}>Sign in</Button>
+                  <Button variant="secondary" onClick={signUpAdmin}>Create admin account</Button>
+                </div>
+                <div className="text-center">
+                  <Button 
+                    variant="link" 
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm"
+                  >
+                    Forgot your password?
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label>Email</Label>
+                  <Input 
+                    type="email" 
+                    value={resetEmail} 
+                    onChange={(e) => setResetEmail(e.target.value)} 
+                    placeholder="ed@zoby.ai" 
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={resetPassword}>Send Reset Link</Button>
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setResetEmail("");
+                    }}
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </main>
