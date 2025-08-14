@@ -1,8 +1,10 @@
-import { ReactSortable } from "react-sortablejs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
+import { isAdmin } from "@/lib/session";
 
 const statusClass: Record<IdeaStatus, string> = {
   backlog: "border-l-4 border-l-muted",
@@ -13,11 +15,14 @@ const statusClass: Record<IdeaStatus, string> = {
   done: "border-l-4 border-l-primary",
 };
 
-interface SortableIdea extends Idea {
-  id: string;
-  chosen?: boolean;
-  selected?: boolean;
-}
+const statusOptions: { value: IdeaStatus; label: string }[] = [
+  { value: "backlog", label: "Backlog" },
+  { value: "discussion", label: "Discussion" },
+  { value: "production", label: "Production" },
+  { value: "review", label: "Review" },
+  { value: "roadblock", label: "Roadblock" },
+  { value: "done", label: "Done" },
+];
 
 export function Column({
   title,
@@ -34,10 +39,16 @@ export function Column({
   onVote: (id: string, delta: 1 | -1) => void;
   onOpen: (idea: Idea) => void;
 }) {
-  const sortableIdeas: SortableIdea[] = ideas.map(idea => ({
-    ...idea,
-    id: idea.id,
-  }));
+  const isUserAdmin = isAdmin();
+
+  const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
+    if (toStatus === "roadblock") {
+      const reason = prompt("Reason for roadblock?") || undefined;
+      onMove(ideaId, toStatus, reason);
+    } else {
+      onMove(ideaId, toStatus);
+    }
+  };
 
   return (
     <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
@@ -45,115 +56,77 @@ export function Column({
         <div className="text-sm font-medium">{title}</div>
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
-      <div
-        className="p-2 space-y-2 min-h-[120px]"
-        data-status={status}
-      >
-        <ReactSortable
-          list={sortableIdeas}
-          setList={(newList) => {
-            // Let ReactSortable manage the visual updates
-            console.log('setList called with:', newList.length, 'items');
-          }}
-          group={{
-            name: "ideas",
-            pull: true,
-            put: true
-          }}
-          animation={150}
-          ghostClass="opacity-50"
-          chosenClass="ring-2 ring-primary"
-          dragClass="rotate-3"
-          forceFallback={false}
-          fallbackOnBody={true}
-          swapThreshold={0.65}
-          onEnd={(evt) => {
-            console.log('Drag ended', evt);
-            console.log('From index:', evt.oldIndex, 'To index:', evt.newIndex);
-            console.log('From container:', evt.from.dataset?.status);
-            console.log('To container:', evt.to.dataset?.status);
-            
-            const id = (evt.item as HTMLElement).dataset.id;
-            console.log('Item ID from dataset:', id);
-            
-            if (!id) {
-              console.error('No ID found on dragged item');
-              return;
-            }
-            
-            const fromStatus = (evt.from as HTMLElement).dataset?.status as IdeaStatus;
-            const toStatus = (evt.to as HTMLElement).dataset?.status as IdeaStatus;
-            
-            console.log('Moving from:', fromStatus, 'to:', toStatus);
-            
-            if (!toStatus) {
-              console.error('No target status found');
-              return;
-            }
-            
-            // Only trigger move if actually moving to a different column
-            if (fromStatus !== toStatus) {
-              console.log('Calling onMove with:', id, toStatus);
-              
-              if (toStatus === "roadblock") {
-                const reason = prompt("Reason for roadblock?") || undefined;
-                onMove(id, toStatus, reason);
-              } else {
-                onMove(id, toStatus);
-              }
-            } else {
-              console.log('Same column, no move needed');
-            }
-          }}
-        >
-          {sortableIdeas.map((it) => (
-            <Card 
-              key={it.id} 
-              data-id={it.id} 
-              className={`${statusClass[status]} cursor-grab active:cursor-grabbing mb-2`}
-            >
-              <CardHeader className="p-3">
-                <CardTitle className="text-sm">{it.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>by {it.creatorName}</div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant={it.status === "roadblock" ? "destructive" : "secondary"}>
-                      Score {it.score}
-                    </Badge>
-                  </div>
+      <div className="p-2 space-y-2 min-h-[120px]">
+        {ideas.map((idea) => (
+          <Card 
+            key={idea.id} 
+            className={`${statusClass[status]} mb-2`}
+          >
+            <CardHeader className="p-3">
+              <div className="flex items-start justify-between">
+                <CardTitle className="text-sm flex-1">{idea.title}</CardTitle>
+                {isUserAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-background border">
+                      {statusOptions
+                        .filter(option => option.value !== status)
+                        .map(option => (
+                          <DropdownMenuItem
+                            key={option.value}
+                            onClick={() => handleMove(idea.id, option.value)}
+                            className="cursor-pointer"
+                          >
+                            Move to {option.label}
+                          </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
+              <div className="flex items-center justify-between">
+                <div>by {idea.creatorName}</div>
+                <div className="flex items-center gap-1">
+                  <Badge variant={idea.status === "roadblock" ? "destructive" : "secondary"}>
+                    Score {idea.score}
+                  </Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
-                    className="flex-1 sm:flex-none" 
-                    onClick={() => onVote(it.id, 1)}
-                  >
-                    Upvote
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
-                    className="flex-1 sm:flex-none" 
-                    onClick={() => onVote(it.id, -1)}
-                  >
-                    Downvote
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="flex-1 sm:flex-none" 
-                    onClick={() => onOpen(it)}
-                  >
-                    Details
-                  </Button>
-                </div>
-                <div className="text-[10px]">Updated {new Date(it.lastActivityAt).toLocaleString()}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </ReactSortable>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="secondary" 
+                  className="flex-1 sm:flex-none" 
+                  onClick={() => onVote(idea.id, 1)}
+                >
+                  Upvote
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="secondary" 
+                  className="flex-1 sm:flex-none" 
+                  onClick={() => onVote(idea.id, -1)}
+                >
+                  Downvote
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="flex-1 sm:flex-none" 
+                  onClick={() => onOpen(idea)}
+                >
+                  Details
+                </Button>
+              </div>
+              <div className="text-[10px]">Updated {new Date(idea.lastActivityAt).toLocaleString()}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
