@@ -4,14 +4,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Board } from "@/components/kanban/Board";
-import { getAdminPasscode, getDisplayName, getTeamPasscode, setAdminPasscode, setDisplayName, setIsAdmin, setTeamPasscode } from "@/lib/session";
+import { getAdminPasscode, getDisplayName, getTeamPasscode, setAdminPasscode, setDisplayName, setIsAdmin, setTeamPasscode, setUserEmail } from "@/lib/session";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function BoardPage() {
   const [hasAccess, setHasAccess] = useState<boolean>(false);
-  const [step, setStep] = useState<"passcode" | "name" | "board">("passcode");
+  const [step, setStep] = useState<"passcode" | "email" | "name" | "board">("passcode");
   const [passcode, setPasscode] = useState("");
+  const [email, setEmail] = useState("");
   const [name, setNameInput] = useState("");
   const { slug } = useParams<{ slug?: string }>();
 
@@ -22,7 +23,7 @@ export default function BoardPage() {
     const localPass = getTeamPasscode(slug);
     if (localPass) {
       setHasAccess(true);
-      setStep("name");
+      setStep("email");
     }
   }, [slug]);
 
@@ -37,11 +38,11 @@ export default function BoardPage() {
         setTeamPasscode(passcode, slug);
         toast({ title: "Access granted" });
         setHasAccess(true);
-        setStep("name");
+        setStep("email");
       } else if (passcode === getAdminPasscode()) {
         setIsAdmin(true);
         setHasAccess(true);
-        setStep("name");
+        setStep("email");
       } else {
         toast({ title: "Wrong passcode" });
       }
@@ -53,28 +54,72 @@ export default function BoardPage() {
       setTeamPasscode(passcode);
       toast({ title: "Team passcode set" });
       setHasAccess(true);
-      setStep("name");
+      setStep("email");
       return;
     }
     if (passcode === teamCode) {
       setHasAccess(true);
-      setStep("name");
+      setStep("email");
     } else if (passcode === getAdminPasscode()) {
       setIsAdmin(true);
       setHasAccess(true);
-      setStep("name");
+      setStep("email");
     } else {
       toast({ title: "Wrong passcode" });
     }
   }
 
-  function handleName() {
+  function handleEmail() {
+    if (!email.trim() || !email.includes("@")) {
+      toast({ title: "Please enter a valid email" });
+      return;
+    }
+    setStep("name");
+  }
+
+  async function handleName() {
     if (!name.trim()) {
       toast({ title: "Please enter a display name" });
       return;
     }
     setDisplayName(name.trim());
+    setUserEmail(email.trim());
+    
+    // Add user to board members
+    if (slug) {
+      await addMemberToBoard(slug, email.trim(), name.trim());
+    }
+    
     setStep("board");
+  }
+
+  async function addMemberToBoard(boardSlug: string, userEmail: string, displayName: string) {
+    try {
+      const { data: boardData } = await supabase
+        .from("boards")
+        .select("id")
+        .eq("slug", boardSlug)
+        .single();
+
+      if (boardData) {
+        const { error } = await supabase
+          .from("board_members")
+          .upsert({
+            board_id: boardData.id,
+            email: userEmail,
+            display_name: displayName,
+            role: "member"
+          }, {
+            onConflict: "board_id,email"
+          });
+
+        if (error && !error.message.includes("duplicate")) {
+          console.error("Error adding member to board:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error adding member to board:", error);
+    }
   }
 
   if (!hasAccess || step !== "board") {
@@ -92,6 +137,13 @@ export default function BoardPage() {
                     <Button variant="secondary" onClick={() => { setIsAdmin(false); setPasscode(""); }}>Reset</Button>
                   </div>
                   <p className="text-sm text-muted-foreground">Tip: For shared boards, enter the passcode provided by your admin. Admins can also unlock with the admin passcode from /admin.</p>
+                </>
+              )}
+              {step === "email" && (
+                <>
+                  <h1 className="text-xl font-semibold">Enter your email</h1>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+                  <Button onClick={handleEmail}>Continue</Button>
                 </>
               )}
               {step === "name" && (

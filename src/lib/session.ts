@@ -51,6 +51,13 @@ export function setDisplayName(name: string) {
   storage.setRaw(DISPLAY_NAME_KEY, name);
 }
 
+export function getUserEmail(): string | null {
+  return storage.getRaw("kanban_user_email");
+}
+export function setUserEmail(email: string) {
+  storage.setRaw("kanban_user_email", email);
+}
+
 export function getUserToken(): string {
   let token = storage.getRaw(USER_TOKEN_KEY);
   if (!token) {

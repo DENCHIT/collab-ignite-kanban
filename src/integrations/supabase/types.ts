@@ -7,13 +7,54 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      board_members: {
+        Row: {
+          board_id: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          joined_at: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          display_name: string
+          email: string
+          id?: string
+          joined_at?: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_members_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
           created_at: string
@@ -52,8 +93,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_board_manager: {
+        Args: { _board_slug: string; _user_email: string }
+        Returns: boolean
+      }
       verify_board_passcode: {
-        Args: { _slug: string; _passcode: string }
+        Args: { _passcode: string; _slug: string }
         Returns: boolean
       }
     }

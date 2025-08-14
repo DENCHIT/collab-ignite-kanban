@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
@@ -24,6 +25,9 @@ export default function Admin() {
   const [boardPass, setBoardPass] = useState("");
   const [boards, setBoards] = useState<any[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState<any>(null);
+  const [boardMembers, setBoardMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email ?? null);
@@ -127,6 +131,37 @@ export default function Admin() {
       setBoards(data ?? []);
     }
     setLoadingBoards(false);
+  }
+
+  async function fetchBoardMembers(boardId: string) {
+    setLoadingMembers(true);
+    const { data, error } = await supabase
+      .from("board_members")
+      .select("*")
+      .eq("board_id", boardId)
+      .order("joined_at", { ascending: false });
+    if (error) {
+      toast({ title: "Load members failed", description: error.message });
+    } else {
+      setBoardMembers(data ?? []);
+    }
+    setLoadingMembers(false);
+  }
+
+  async function updateMemberRole(memberId: string, newRole: "member" | "manager") {
+    const { error } = await supabase
+      .from("board_members")
+      .update({ role: newRole })
+      .eq("id", memberId);
+    
+    if (error) {
+      toast({ title: "Update failed", description: error.message });
+    } else {
+      toast({ title: "Role updated", description: `Member is now a ${newRole}` });
+      if (selectedBoard) {
+        fetchBoardMembers(selectedBoard.id);
+      }
+    }
   }
 
   async function createBoard() {
@@ -315,6 +350,7 @@ export default function Admin() {
                     <TableHead>Passcode</TableHead>
                     <TableHead>Ideas</TableHead>
                     <TableHead>Votes</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -322,7 +358,7 @@ export default function Admin() {
                     <TableRow key={b.id}>
                       <TableCell className="font-medium">{b.name}</TableCell>
                       <TableCell>{b.slug}</TableCell>
-                      <TableCell>
+                     <TableCell>
                         <a href={`/b/${b.slug}`} className="underline" target="_blank" rel="noreferrer">
                           {`${window.location.origin}/b/${b.slug}`}
                         </a>
@@ -330,6 +366,18 @@ export default function Admin() {
                       <TableCell>{b.passcode}</TableCell>
                       <TableCell>—</TableCell>
                       <TableCell>—</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBoard(b);
+                            fetchBoardMembers(b.id);
+                          }}
+                        >
+                          View Members
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -338,6 +386,80 @@ export default function Admin() {
           )}
         </CardContent>
       </Card>
+
+      {selectedBoard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Board Members - {selectedBoard.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingMembers ? (
+              <div className="text-sm text-muted-foreground">Loading members...</div>
+            ) : boardMembers.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No members have joined this board yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableCaption>Board members and their roles</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {boardMembers.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">{member.display_name}</TableCell>
+                        <TableCell>{member.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={member.role === "manager" ? "default" : "secondary"}>
+                            {member.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(member.joined_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {member.role === "member" ? (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => updateMemberRole(member.id, "manager")}
+                              >
+                                Make Manager
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => updateMemberRole(member.id, "member")}
+                              >
+                                Remove Manager
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            <div className="mt-4">
+              <Button 
+                variant="secondary" 
+                onClick={() => setSelectedBoard(null)}
+              >
+                Back to Boards
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Data</CardTitle>

@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
-import { isAdmin } from "@/lib/session";
+import { isAdmin, getUserEmail } from "@/lib/session";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const statusClass: Record<IdeaStatus, string> = {
   backlog: "border-l-4 border-l-muted",
@@ -31,6 +33,7 @@ export function Column({
   onMove,
   onVote,
   onOpen,
+  boardSlug,
 }: {
   title: string;
   status: IdeaStatus;
@@ -38,8 +41,32 @@ export function Column({
   onMove: (id: string, to: IdeaStatus, reason?: string) => void;
   onVote: (id: string, delta: 1 | -1) => void;
   onOpen: (idea: Idea) => void;
+  boardSlug?: string;
 }) {
   const isUserAdmin = isAdmin();
+  const [isManager, setIsManager] = useState(false);
+
+  useEffect(() => {
+    async function checkManagerStatus() {
+      if (!boardSlug || isUserAdmin) return;
+      
+      const userEmail = getUserEmail();
+      if (!userEmail) return;
+      
+      const { data, error } = await supabase.rpc('is_board_manager', {
+        _board_slug: boardSlug,
+        _user_email: userEmail
+      });
+      
+      if (!error && data === true) {
+        setIsManager(true);
+      }
+    }
+    
+    checkManagerStatus();
+  }, [boardSlug, isUserAdmin]);
+
+  const canManageBoard = isUserAdmin || isManager;
 
   const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
     if (toStatus === "roadblock") {
@@ -65,7 +92,7 @@ export function Column({
             <CardHeader className="p-3">
               <div className="flex items-start justify-between">
                 <CardTitle className="text-sm flex-1">{idea.title}</CardTitle>
-                {isUserAdmin && (
+                {canManageBoard && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
