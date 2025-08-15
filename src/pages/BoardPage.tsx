@@ -17,10 +17,12 @@ export default function BoardPage() {
   const { slug } = useParams<{ slug?: string }>();
 
   useEffect(() => {
+    console.log("BoardPage mounted with slug:", slug);
     const savedName = getDisplayName();
     if (savedName) setNameInput(savedName);
     // If user already unlocked this board, skip passcode step
     const localPass = getTeamPasscode(slug);
+    console.log("Local passcode for slug:", localPass);
     if (localPass) {
       setHasAccess(true);
       setStep("email");
