@@ -99,7 +99,7 @@ export function Column({
                         <MoreHorizontal className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background border">
+                    <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-md">
                       {statusOptions
                         .filter(option => option.value !== status)
                         .map(option => (
