@@ -5,7 +5,9 @@ import { Idea, IdeaStatus, Thresholds } from "@/types/idea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { IdeaModal } from "./IdeaModal";
-import { getDisplayName, getUserToken, isAdmin, loadIdeas, loadThresholds, saveIdeas } from "@/lib/session";
+import { getDisplayName, getUserToken, isAdmin, loadThresholds } from "@/lib/session";
+import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 const defaultThresholds: Thresholds = {
   toDiscussion: 5,
@@ -46,13 +48,144 @@ const initialIdeas: Idea[] = [
 
 export function Board({ boardSlug }: { boardSlug?: string }) {
   const [thresholds] = useState<Thresholds>(loadThresholds(defaultThresholds, boardSlug));
-  const [ideas, setIdeas] = useState<Idea[]>(loadIdeas<Idea[]>(initialIdeas, boardSlug));
+  const [ideas, setIdeas] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false });
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
+  const [boardId, setBoardId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Load board and ideas from Supabase
   useEffect(() => {
-    saveIdeas(ideas, boardSlug);
-  }, [ideas, boardSlug]);
+    let ignore = false;
+    
+    const loadBoardData = async () => {
+      if (!boardSlug) {
+        console.error('No board slug provided');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Get board ID from slug
+        const { data: board, error: boardError } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('slug', boardSlug)
+          .single();
+
+        if (boardError) {
+          console.error('Error loading board:', boardError);
+          setLoading(false);
+          return;
+        }
+
+        if (ignore) return;
+        
+        setBoardId(board.id);
+
+        // Load ideas for this board
+        const { data: ideasData, error: ideasError } = await supabase
+          .from('ideas')
+          .select('*')
+          .eq('board_id', board.id)
+          .order('created_at', { ascending: false });
+
+        if (ideasError) {
+          console.error('Error loading ideas:', ideasError);
+          setLoading(false);
+          return;
+        }
+
+        if (ignore) return;
+
+        // Convert database format to frontend format
+        const formattedIdeas: Idea[] = ideasData.map(dbIdea => ({
+          id: dbIdea.id,
+          title: dbIdea.title,
+          description: dbIdea.description,
+          creatorName: dbIdea.creator_name,
+          score: dbIdea.score,
+          status: dbIdea.status as IdeaStatus,
+          lastActivityAt: dbIdea.last_activity_at,
+          voters: dbIdea.voters as Record<string, number>,
+          comments: dbIdea.comments as any[],
+          history: dbIdea.history as any[],
+          blockedReason: dbIdea.blocked_reason
+        }));
+
+        setIdeas(formattedIdeas);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error in loadBoardData:', error);
+        setLoading(false);
+      }
+    };
+
+    loadBoardData();
+    
+    return () => {
+      ignore = true;
+    };
+  }, [boardSlug]);
+
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!boardId) return;
+
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ideas',
+          filter: `board_id=eq.${boardId}`
+        },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newIdea: Idea = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description,
+              creatorName: payload.new.creator_name,
+              score: payload.new.score,
+              status: payload.new.status as IdeaStatus,
+              lastActivityAt: payload.new.last_activity_at,
+              voters: payload.new.voters as Record<string, number>,
+              comments: payload.new.comments as any[],
+              history: payload.new.history as any[],
+              blockedReason: payload.new.blocked_reason
+            };
+            setIdeas(prev => [newIdea, ...prev.filter(idea => idea.id !== newIdea.id)]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedIdea: Idea = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description,
+              creatorName: payload.new.creator_name,
+              score: payload.new.score,
+              status: payload.new.status as IdeaStatus,
+              lastActivityAt: payload.new.last_activity_at,
+              voters: payload.new.voters as Record<string, number>,
+              comments: payload.new.comments as any[],
+              history: payload.new.history as any[],
+              blockedReason: payload.new.blocked_reason
+            };
+            setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
+          } else if (payload.eventType === 'DELETE') {
+            setIdeas(prev => prev.filter(idea => idea.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boardId]);
 
   const grouped = useMemo(() => {
     const buckets: Record<IdeaStatus, Idea[]> = {
@@ -105,50 +238,86 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     return updated;
   }
 
-  function vote(id: string, delta: 1 | -1) {
+  async function vote(id: string, delta: 1 | -1) {
     const token = getUserToken();
     const me = getDisplayName() ?? "Anonymous";
-    setIdeas((prev) =>
-      prev.map((it) => {
-        if (it.id !== id) return it;
-        if (it.voters[token]) {
-          toast({ title: "Already voted", description: "You cannot vote twice on the same idea." });
-          return it;
-        }
-        let updated: Idea = {
-          ...it,
-          voters: { ...it.voters, [token]: delta },
-          score: it.score + delta,
-          lastActivityAt: new Date().toISOString(),
-        };
-        updated = logHistory(updated, { type: "voted", user: me, timestamp: updated.lastActivityAt, delta, details: delta > 0 ? "+1" : "-1" });
-        updated = autoMove(updated);
-        return updated;
+    
+    const ideaToUpdate = ideas.find(it => it.id === id);
+    if (!ideaToUpdate) return;
+    
+    if (ideaToUpdate.voters[token]) {
+      toast({ title: "Already voted", description: "You cannot vote twice on the same idea." });
+      return;
+    }
+
+    let updated: Idea = {
+      ...ideaToUpdate,
+      voters: { ...ideaToUpdate.voters, [token]: delta },
+      score: ideaToUpdate.score + delta,
+      lastActivityAt: new Date().toISOString(),
+    };
+    updated = logHistory(updated, { type: "voted", user: me, timestamp: updated.lastActivityAt, delta, details: delta > 0 ? "+1" : "-1" });
+    updated = autoMove(updated);
+
+    // Update in database
+    const { error } = await supabase
+      .from('ideas')
+      .update({
+        voters: JSON.parse(JSON.stringify(updated.voters)) as Json,
+        score: updated.score,
+        status: updated.status,
+        last_activity_at: updated.lastActivityAt,
+        history: JSON.parse(JSON.stringify(updated.history)) as Json,
+        blocked_reason: updated.blockedReason
       })
-    );
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating vote:', error);
+      toast({ title: "Error", description: "Failed to save vote. Please try again." });
+    }
   }
 
-  function move(id: string, to: IdeaStatus, reason?: string) {
+  async function move(id: string, to: IdeaStatus, reason?: string) {
     console.log('Moving idea', id, 'to', to);
-    setIdeas((prev) =>
-      prev.map((it) => {
-        if (it.id !== id) return it;
-        const from = it.status;
-        if (to === "done" && !isAdmin()) {
-          toast({ title: "Only admins can move to Done" });
-          return it;
-        }
-        let updated: Idea = { ...it, status: to, lastActivityAt: new Date().toISOString() };
-        if (to === "roadblock") updated.blockedReason = reason || "";
-        if (from === "roadblock" && to !== "roadblock") updated.blockedReason = undefined;
-        updated = logHistory(updated, { type: "moved", user: getDisplayName() ?? "Anonymous", timestamp: updated.lastActivityAt, from, to, details: reason });
-        console.log('Updated idea:', updated);
-        return updated;
+    
+    const ideaToUpdate = ideas.find(it => it.id === id);
+    if (!ideaToUpdate) return;
+    
+    const from = ideaToUpdate.status;
+    if (to === "done" && !isAdmin()) {
+      toast({ title: "Only admins can move to Done" });
+      return;
+    }
+    
+    let updated: Idea = { ...ideaToUpdate, status: to, lastActivityAt: new Date().toISOString() };
+    if (to === "roadblock") updated.blockedReason = reason || "";
+    if (from === "roadblock" && to !== "roadblock") updated.blockedReason = undefined;
+    updated = logHistory(updated, { type: "moved", user: getDisplayName() ?? "Anonymous", timestamp: updated.lastActivityAt, from, to, details: reason });
+    
+    // Update in database
+    const { error } = await supabase
+      .from('ideas')
+      .update({
+        status: updated.status,
+        last_activity_at: updated.lastActivityAt,
+        history: JSON.parse(JSON.stringify(updated.history)) as Json,
+        blocked_reason: updated.blockedReason
       })
-    );
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating move:', error);
+      toast({ title: "Error", description: "Failed to move idea. Please try again." });
+    }
   }
 
-  function addIdea(title: string, description?: string) {
+  async function addIdea(title: string, description?: string) {
+    if (!boardId) {
+      toast({ title: "Error", description: "Board not loaded. Please try again." });
+      return;
+    }
+    
     const me = getDisplayName() ?? "Anonymous";
     const now = new Date().toISOString();
     const newIdea: Idea = {
@@ -165,7 +334,39 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         { id: crypto.randomUUID(), type: "created", user: me, timestamp: now },
       ],
     };
-    setIdeas((prev) => [newIdea, ...prev]);
+    
+    // Insert into database
+    const { error } = await supabase
+      .from('ideas')
+      .insert({
+        id: newIdea.id,
+        board_id: boardId,
+        title: newIdea.title,
+        description: newIdea.description,
+        creator_name: newIdea.creatorName,
+        score: newIdea.score,
+        status: newIdea.status,
+        last_activity_at: newIdea.lastActivityAt,
+        voters: JSON.parse(JSON.stringify(newIdea.voters)) as Json,
+        comments: JSON.parse(JSON.stringify(newIdea.comments)) as Json,
+        history: JSON.parse(JSON.stringify(newIdea.history)) as Json,
+      });
+
+    if (error) {
+      console.error('Error adding idea:', error);
+      toast({ title: "Error", description: "Failed to add idea. Please try again." });
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">Team Ideas Board</h1>
+        </div>
+        <div className="text-center py-8">Loading board...</div>
+      </div>
+    );
   }
 
   return (

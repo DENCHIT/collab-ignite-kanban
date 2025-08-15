@@ -88,6 +88,65 @@ export type Database = {
         }
         Relationships: []
       }
+      ideas: {
+        Row: {
+          blocked_reason: string | null
+          board_id: string
+          comments: Json
+          created_at: string
+          creator_name: string
+          description: string | null
+          history: Json
+          id: string
+          last_activity_at: string
+          score: number
+          status: string
+          title: string
+          updated_at: string
+          voters: Json
+        }
+        Insert: {
+          blocked_reason?: string | null
+          board_id: string
+          comments?: Json
+          created_at?: string
+          creator_name: string
+          description?: string | null
+          history?: Json
+          id?: string
+          last_activity_at?: string
+          score?: number
+          status?: string
+          title: string
+          updated_at?: string
+          voters?: Json
+        }
+        Update: {
+          blocked_reason?: string | null
+          board_id?: string
+          comments?: Json
+          created_at?: string
+          creator_name?: string
+          description?: string | null
+          history?: Json
+          id?: string
+          last_activity_at?: string
+          score?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          voters?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ideas_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
