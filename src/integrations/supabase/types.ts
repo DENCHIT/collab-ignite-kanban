@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "boards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_board_member_board"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
         ]
       }
       boards: {

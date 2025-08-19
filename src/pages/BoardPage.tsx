@@ -91,15 +91,23 @@ export default function BoardPage() {
   }
 
   async function addMemberToBoard(boardSlug: string, userEmail: string, displayName: string) {
+    console.log('Adding member to board:', { boardSlug, userEmail, displayName });
     try {
-      const { data: boardData } = await supabase
+      const { data: boardData, error: boardError } = await supabase
         .from("boards")
         .select("id")
         .eq("slug", boardSlug)
         .single();
 
+      console.log('Board lookup result:', { boardData, boardError });
+
+      if (boardError) {
+        console.error("Error finding board:", boardError);
+        return;
+      }
+
       if (boardData) {
-        const { error } = await supabase
+        const { data: memberData, error: memberError } = await supabase
           .from("board_members")
           .upsert({
             board_id: boardData.id,
@@ -108,10 +116,20 @@ export default function BoardPage() {
             role: "member"
           }, {
             onConflict: "board_id,email"
-          });
+          })
+          .select();
 
-        if (error && !error.message.includes("duplicate")) {
-          console.error("Error adding member to board:", error);
+        console.log('Member upsert result:', { memberData, memberError });
+
+        if (memberError) {
+          console.error("Error adding member to board:", memberError);
+          toast({ 
+            title: "Warning", 
+            description: "Could not register as board member, but you can still use the board" 
+          });
+        } else {
+          console.log('Successfully added member to board');
+          toast({ title: "Welcome to the board!" });
         }
       }
     } catch (error) {
