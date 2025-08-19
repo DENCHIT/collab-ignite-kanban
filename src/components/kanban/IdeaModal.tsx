@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
 import { AttachmentPreview } from "@/components/ui/attachment-preview";
 import { WatchButton } from "@/components/ui/watch-button";
-import { MentionInput } from "@/components/ui/mention-input";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Idea, IdeaComment, IdeaCommentAttachment } from "@/types/idea";
@@ -18,6 +17,7 @@ interface IdeaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdate: (updatedIdea: Idea) => void;
+  boardSlug?: string;
 }
 
 interface BoardMember {
@@ -25,7 +25,7 @@ interface BoardMember {
   display_name: string;
 }
 
-export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) => {
+export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaModalProps) => {
   const [currentComment, setCurrentComment] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -54,25 +54,42 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
   // Fetch board members for mentions
   useEffect(() => {
     const fetchBoardMembers = async () => {
+      if (!boardSlug) return;
+      
       try {
-        // Get board from idea (you'll need to pass boardId or slug)
-        // For now, we'll create some mock data - in real implementation,
-        // you'd query the board_members table
-        const mockMembers = [
-          { email: 'john@example.com', display_name: 'John Doe' },
-          { email: 'jane@example.com', display_name: 'Jane Smith' },
-          { email: 'admin@example.com', display_name: 'Admin User' },
-        ];
-        setBoardMembers(mockMembers);
+        // First get the board ID
+        const { data: board, error: boardError } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('slug', boardSlug)
+          .single();
+
+        if (boardError) {
+          console.error('Error fetching board:', boardError);
+          return;
+        }
+
+        // Then get board members for this board
+        const { data: members, error: membersError } = await supabase
+          .from('board_members')
+          .select('email, display_name')
+          .eq('board_id', board.id);
+
+        if (membersError) {
+          console.error('Error fetching board members:', membersError);
+          return;
+        }
+
+        setBoardMembers(members || []);
       } catch (error) {
         console.error('Failed to fetch board members:', error);
       }
     };
 
-    if (isOpen) {
+    if (isOpen && boardSlug) {
       fetchBoardMembers();
     }
-  }, [isOpen]);
+  }, [isOpen, boardSlug]);
 
   const uploadFiles = async (files: UploadedFile[]): Promise<IdeaCommentAttachment[]> => {
     const attachments: IdeaCommentAttachment[] = [];
@@ -143,18 +160,33 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
     }
   };
 
+  const extractMentionsFromHtml = (html: string) => {
+    const mentions: string[] = [];
+    boardMembers.forEach(member => {
+      if (html.includes(`@${member.display_name}`)) {
+        mentions.push(member.email);
+      }
+    });
+    return mentions;
+  };
+
   const handleSendComment = async () => {
     if (!currentComment.trim() && uploadedFiles.length === 0) return;
 
     setIsUploading(true);
     try {
+      // Extract mentions from rich text content
+      const extractedMentions = extractMentionsFromHtml(currentComment);
+      const allMentions = [...new Set([...mentionedUsers, ...extractedMentions])];
+
       // Upload files first
       const attachments = uploadedFiles.length > 0 ? await uploadFiles(uploadedFiles) : [];
 
       const newComment: IdeaComment = {
         id: crypto.randomUUID(),
         user: currentUserEmail,
-        text: currentComment,
+        text: currentComment, // This will be HTML from rich text editor
+        content: currentComment, // Store HTML in content field
         attachments,
         timestamp: new Date().toISOString(),
         replyTo,
@@ -165,7 +197,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
       // Auto-subscribe mentioned users to watch the idea
       const newWatchers = [...new Set([
         ...(idea.watchers || []),
-        ...mentionedUsers,
+        ...allMentions,
         currentUserEmail, // Auto-watch when commenting
       ])];
 
@@ -195,8 +227,8 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
           .map(email => ({
             user_email: email,
             idea_id: idea.id,
-            type: mentionedUsers.includes(email) ? 'mention' : 'comment',
-            message: mentionedUsers.includes(email) 
+            type: allMentions.includes(email) ? 'mention' : 'comment',
+            message: allMentions.includes(email) 
               ? `${currentUserEmail} mentioned you in "${idea.title}"`
               : `${currentUserEmail} commented on "${idea.title}"`,
           }));
@@ -294,13 +326,11 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
             {/* Input Area */}
             <div className="flex-1 flex flex-col space-y-3">
               <h3 className="text-sm font-medium">Add Comment</h3>
-              <MentionInput
-                value={currentComment}
+              <RichTextEditor
+                content={currentComment}
                 onChange={setCurrentComment}
-                onMention={handleMention}
                 placeholder={replyTo ? "Write a reply... (use @ to mention someone)" : "Add a comment... (use @ to mention someone)"}
-                className="resize-none min-h-[80px]"
-                boardMembers={boardMembers}
+                className="min-h-[120px]"
               />
               
               <FileUpload
@@ -390,7 +420,10 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate }: IdeaModalProps) =
                           </div>
                         ) : (
                           <div className="bg-background rounded-lg px-3 py-2 border">
-                            <p className="text-sm whitespace-pre-wrap">{entry.text}</p>
+                            <div 
+                              className="text-sm prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: entry.content || entry.text }}
+                            />
                             
                             {/* Attachments */}
                             {'attachments' in entry && entry.attachments && entry.attachments.length > 0 && (

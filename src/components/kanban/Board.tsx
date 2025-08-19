@@ -480,9 +480,15 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} />
         <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} />
       </div>
-      {activeIdea && <IdeaModal idea={activeIdea} isOpen={!!activeIdea} onClose={() => setActiveIdea(null)} onUpdate={(updatedIdea) => {
-        setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
-      }} />}
+      {activeIdea && <IdeaModal 
+        idea={activeIdea} 
+        isOpen={!!activeIdea} 
+        onClose={() => setActiveIdea(null)} 
+        onUpdate={(updatedIdea) => {
+          setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
+        }}
+        boardSlug={boardSlug}
+      />}
     </div>
   );
 }
