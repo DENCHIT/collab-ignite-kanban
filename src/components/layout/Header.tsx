@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { getDisplayName } from "@/lib/session";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Header() {
   const [name, setName] = useState<string | null>(getDisplayName());
@@ -12,6 +13,11 @@ export default function Header() {
     const id = setInterval(() => setName(getDisplayName()), 500);
     return () => clearInterval(id);
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
 
   const isAdminRoute = location.pathname.startsWith("/admin");
 
@@ -29,6 +35,12 @@ export default function Header() {
         <div className="ml-auto flex items-center gap-3">
           <span className="text-sm text-muted-foreground hidden sm:inline">Signed in as</span>
           <div className="text-sm font-medium">{name ?? "Guest"}</div>
+          <button 
+            onClick={handleLogout}
+            className="text-sm text-muted-foreground hover:text-foreground underline cursor-pointer"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </header>
