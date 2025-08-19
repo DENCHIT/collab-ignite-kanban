@@ -8,11 +8,13 @@ import { WatchButton } from "@/components/ui/watch-button";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { CommentReactions } from "@/components/ui/comment-reactions";
 import { Checklist } from "@/components/ui/checklist";
+import { AssigneeSelector } from "@/components/ui/assignee-selector";
+import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Idea, IdeaComment, IdeaCommentAttachment, IdeaChecklistItem } from "@/types/idea";
-import { Clock, Reply, Paperclip, CheckSquare } from "lucide-react";
+import { Clock, Reply, Paperclip, CheckSquare, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface IdeaModalProps {
@@ -287,6 +289,43 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
     }
   };
 
+  const handleAssigneesChange = async (newAssignees: string[]) => {
+    try {
+      const updatedIdea = {
+        ...localIdea,
+        assignees: newAssignees,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update local state immediately
+      setLocalIdea(updatedIdea);
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          assignees: JSON.parse(JSON.stringify(newAssignees)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', localIdea.id);
+
+      if (error) {
+        // Revert local state on error
+        setLocalIdea(localIdea);
+        throw error;
+      }
+
+      onUpdate(updatedIdea);
+    } catch (error) {
+      console.error("Error updating assignees:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update assignees",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSendComment = async () => {
     if (!currentComment.trim() && uploadedFiles.length === 0) return;
 
@@ -423,6 +462,19 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                   {localIdea.checklist.filter(item => item.completed).length}/{localIdea.checklist.length}
                 </Badge>
               )}
+            </div>
+
+            {/* Assignees Section */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Assignees</span>
+              </div>
+              <AssigneeSelector
+                assignees={localIdea.assignees}
+                boardMembers={boardMembers}
+                onAssigneesChange={handleAssigneesChange}
+              />
             </div>
             
             {localIdea.blockedReason && (

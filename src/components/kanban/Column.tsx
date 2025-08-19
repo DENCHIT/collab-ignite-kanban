@@ -54,6 +54,7 @@ export function Column({
 }) {
   const [isManager, setIsManager] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [boardMembers, setBoardMembers] = useState<Array<{ email: string; display_name: string }>>([]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -88,6 +89,46 @@ export function Column({
     
     checkManagerStatus();
   }, [boardSlug, isUserAdmin]);
+
+  // Fetch board members for assignee functionality
+  useEffect(() => {
+    const fetchBoardMembers = async () => {
+      if (!boardSlug) return;
+      
+      try {
+        // First get the board ID
+        const { data: board, error: boardError } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('slug', boardSlug)
+          .single();
+
+        if (boardError) {
+          console.error('Error fetching board:', boardError);
+          return;
+        }
+
+        // Then get board members for this board
+        const { data: members, error: membersError } = await supabase
+          .from('board_members')
+          .select('email, display_name')
+          .eq('board_id', board.id);
+
+        if (membersError) {
+          console.error('Error fetching board members:', membersError);
+          return;
+        }
+
+        setBoardMembers(members || []);
+      } catch (error) {
+        console.error('Failed to fetch board members:', error);
+      }
+    };
+
+    if (boardSlug) {
+      fetchBoardMembers();
+    }
+  }, [boardSlug]);
 
   const canManageBoard = isUserAdmin || isManager;
 
@@ -137,6 +178,32 @@ export function Column({
     }
   };
 
+  const handleAssigneesChange = async (idea: Idea, newAssignees: string[]) => {
+    try {
+      const updatedIdea = {
+        ...idea,
+        assignees: newAssignees,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          assignees: JSON.parse(JSON.stringify(newAssignees)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', idea.id);
+
+      if (error) throw error;
+
+      // Update parent state if callback provided
+      onUpdateIdea?.(updatedIdea);
+    } catch (error) {
+      console.error("Error updating assignees:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
       <div className="px-3 py-2 border-b flex items-center justify-between">
@@ -176,6 +243,18 @@ export function Column({
                     </DropdownMenu>
                   )}
                 </div>
+                
+                {/* Assignees Display */}
+                {idea.assignees.length > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <AssigneeAvatars 
+                      assignees={idea.assignees} 
+                      boardMembers={boardMembers}
+                      maxVisible={3}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
                 <div className="flex items-center justify-between">
@@ -221,6 +300,16 @@ export function Column({
                     <ChevronDown className="h-3 w-3 mr-1" />
                     {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
                   </Button>
+                  <AssigneeSelector
+                    assignees={idea.assignees}
+                    boardMembers={boardMembers}
+                    onAssigneesChange={(newAssignees) => handleAssigneesChange(idea, newAssignees)}
+                    trigger={
+                      <Button size="sm" variant="outline" className="flex-1 sm:flex-none">
+                        Assign
+                      </Button>
+                    }
+                  />
                   <Button 
                     size="sm" 
                     className="flex-1 sm:flex-none" 
