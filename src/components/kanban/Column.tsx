@@ -133,8 +133,10 @@ export function Column({
               <div className="flex flex-wrap items-center gap-2">
                 <Button 
                   size="sm" 
-                  variant={getUserVote(idea) === 1 ? "default" : "secondary"}
-                  className="flex-1 sm:flex-none" 
+                  variant="secondary"
+                  className={`flex-1 sm:flex-none ${
+                    getUserVote(idea) === 1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
+                  }`}
                   onClick={() => onVote(idea.id, 1)}
                 >
                   <ChevronUp className="h-3 w-3 mr-1" />
@@ -142,8 +144,10 @@ export function Column({
                 </Button>
                 <Button 
                   size="sm" 
-                  variant={getUserVote(idea) === -1 ? "default" : "secondary"}
-                  className="flex-1 sm:flex-none" 
+                  variant="secondary"
+                  className={`flex-1 sm:flex-none ${
+                    getUserVote(idea) === -1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
+                  }`}
                   onClick={() => onVote(idea.id, -1)}
                 >
                   <ChevronDown className="h-3 w-3 mr-1" />

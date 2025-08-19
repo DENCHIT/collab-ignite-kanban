@@ -48,6 +48,10 @@ export default {
 					DEFAULT: 'hsl(var(--popover))',
 					foreground: 'hsl(var(--popover-foreground))'
 				},
+				'vote-active': {
+					DEFAULT: 'hsl(var(--vote-active))',
+					foreground: 'hsl(var(--vote-active-foreground))'
+				},
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
