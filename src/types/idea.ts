@@ -6,6 +6,13 @@ export type IdeaStatus =
   | "roadblock"
   | "done";
 
+export interface IdeaChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 export interface IdeaHistoryItem {
   id: string;
   type:
@@ -55,6 +62,7 @@ export interface Idea {
   history: IdeaHistoryItem[];
   blockedReason?: string;
   watchers: string[]; // Array of user emails watching this idea
+  checklist: IdeaChecklistItem[]; // Array of checklist items
 }
 
 export interface Thresholds {

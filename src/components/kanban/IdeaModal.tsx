@@ -7,10 +7,12 @@ import { AttachmentPreview } from "@/components/ui/attachment-preview";
 import { WatchButton } from "@/components/ui/watch-button";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { CommentReactions } from "@/components/ui/comment-reactions";
+import { Checklist } from "@/components/ui/checklist";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Idea, IdeaComment, IdeaCommentAttachment } from "@/types/idea";
-import { Clock, Reply, Paperclip } from "lucide-react";
+import { Idea, IdeaComment, IdeaCommentAttachment, IdeaChecklistItem } from "@/types/idea";
+import { Clock, Reply, Paperclip, CheckSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface IdeaModalProps {
@@ -248,6 +250,43 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
     return mentions;
   };
 
+  const handleChecklistUpdate = async (newChecklist: IdeaChecklistItem[]) => {
+    try {
+      const updatedIdea = {
+        ...localIdea,
+        checklist: newChecklist,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update local state immediately
+      setLocalIdea(updatedIdea);
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          checklist: JSON.parse(JSON.stringify(newChecklist)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', localIdea.id);
+
+      if (error) {
+        // Revert local state on error
+        setLocalIdea(localIdea);
+        throw error;
+      }
+
+      onUpdate(updatedIdea);
+    } catch (error) {
+      console.error("Error updating checklist:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update checklist",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSendComment = async () => {
     if (!currentComment.trim() && uploadedFiles.length === 0) return;
 
@@ -378,6 +417,12 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
               <Badge variant="secondary">Score {localIdea.score}</Badge>
               <Badge>{localIdea.status}</Badge>
               {localIdea.blockedReason && <Badge variant="destructive">Blocked</Badge>}
+              {localIdea.checklist.length > 0 && (
+                <Badge variant="outline">
+                  <CheckSquare className="h-3 w-3 mr-1" />
+                  {localIdea.checklist.filter(item => item.completed).length}/{localIdea.checklist.length}
+                </Badge>
+              )}
             </div>
             
             {localIdea.blockedReason && (
@@ -385,6 +430,24 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                 <strong>Blocked:</strong> {localIdea.blockedReason}
               </div>
             )}
+
+            {/* Checklist Section */}
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4" />
+                <h3 className="text-sm font-medium">Checklist</h3>
+                <Badge variant="secondary">{localIdea.checklist.length}</Badge>
+              </div>
+              
+              <Checklist
+                items={localIdea.checklist}
+                onItemsChange={handleChecklistUpdate}
+                showProgress={true}
+                className="max-h-48 overflow-y-auto"
+              />
+            </div>
+
+            <Separator />
             
             {/* Reply indicator */}
             {replyTo && (
@@ -406,7 +469,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
             )}
             
             {/* Input Area */}
-            <div className="flex-1 flex flex-col space-y-3">
+            <div className="flex flex-col space-y-3">
               <h3 className="text-sm font-medium">Add Comment</h3>
               <RichTextEditor
                 content={currentComment}

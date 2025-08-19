@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MoreHorizontal, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -90,6 +91,12 @@ export function Column({
     return idea.voters[token];
   };
 
+  const getChecklistProgress = (idea: Idea) => {
+    const totalItems = idea.checklist.length;
+    const completedItems = idea.checklist.filter(item => item.completed).length;
+    return { completed: completedItems, total: totalItems };
+  };
+
   const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
     if (toStatus === "roadblock") {
       const reason = prompt("Reason for roadblock?") || undefined;
@@ -146,8 +153,25 @@ export function Column({
                     <Badge variant={idea.status === "roadblock" ? "destructive" : "secondary"}>
                       Score {idea.score}
                     </Badge>
+                    {idea.checklist.length > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        <CheckSquare className="h-2 w-2 mr-1" />
+                        {getChecklistProgress(idea).completed}/{getChecklistProgress(idea).total}
+                      </Badge>
+                    )}
                   </div>
                 </div>
+                
+                {/* Checklist Progress Bar */}
+                {idea.checklist.length > 0 && (
+                  <div className="space-y-1">
+                    <ProgressBar 
+                      value={getChecklistProgress(idea).completed} 
+                      max={getChecklistProgress(idea).total} 
+                      size="sm"
+                    />
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button 
                     size="sm" 

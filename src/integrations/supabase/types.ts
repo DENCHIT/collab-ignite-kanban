@@ -130,6 +130,7 @@ export type Database = {
         Row: {
           blocked_reason: string | null
           board_id: string
+          checklist: Json
           comments: Json
           created_at: string
           creator_name: string
@@ -147,6 +148,7 @@ export type Database = {
         Insert: {
           blocked_reason?: string | null
           board_id: string
+          checklist?: Json
           comments?: Json
           created_at?: string
           creator_name: string
@@ -164,6 +166,7 @@ export type Database = {
         Update: {
           blocked_reason?: string | null
           board_id?: string
+          checklist?: Json
           comments?: Json
           created_at?: string
           creator_name?: string
