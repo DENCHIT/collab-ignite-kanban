@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { QuickChecklist } from "@/components/ui/quick-checklist";
 import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare } from "lucide-react";
-import { Idea, IdeaStatus } from "@/types/idea";
+import { Idea, IdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,7 @@ export function Column({
   onOpen,
   onDelete,
   boardSlug,
+  onUpdateIdea,
 }: {
   title: string;
   status: IdeaStatus;
@@ -46,6 +48,7 @@ export function Column({
   onOpen: (idea: Idea) => void;
   onDelete: (id: string) => void;
   boardSlug?: string;
+  onUpdateIdea?: (updatedIdea: Idea) => void;
 }) {
   const [isManager, setIsManager] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -95,6 +98,32 @@ export function Column({
     const totalItems = idea.checklist.length;
     const completedItems = idea.checklist.filter(item => item.completed).length;
     return { completed: completedItems, total: totalItems };
+  };
+
+  const handleChecklistUpdate = async (idea: Idea, newChecklist: IdeaChecklistItem[]) => {
+    try {
+      const updatedIdea = {
+        ...idea,
+        checklist: newChecklist,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          checklist: JSON.parse(JSON.stringify(newChecklist)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', idea.id);
+
+      if (error) throw error;
+
+      // Update parent state if callback provided
+      onUpdateIdea?.(updatedIdea);
+    } catch (error) {
+      console.error("Error updating checklist:", error);
+    }
   };
 
   const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
@@ -153,18 +182,12 @@ export function Column({
                     <Badge variant={idea.status === "roadblock" ? "destructive" : "secondary"}>
                       Score {idea.score}
                     </Badge>
-                    {idea.checklist.length > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        <CheckSquare className="h-2 w-2 mr-1" />
-                        {getChecklistProgress(idea).completed}/{getChecklistProgress(idea).total}
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 
                 {/* Checklist Progress Bar */}
                 {idea.checklist.length > 0 && (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <ProgressBar 
                       value={getChecklistProgress(idea).completed} 
                       max={getChecklistProgress(idea).total} 
@@ -172,6 +195,7 @@ export function Column({
                     />
                   </div>
                 )}
+                
                 <div className="flex flex-wrap items-center gap-2">
                   <Button 
                     size="sm" 
@@ -202,6 +226,19 @@ export function Column({
                   >
                     Details
                   </Button>
+                </div>
+                
+                {/* Quick Checklist Access */}
+                <div className="flex items-center justify-between">
+                  <QuickChecklist
+                    items={idea.checklist}
+                    onItemsChange={(newChecklist) => handleChecklistUpdate(idea, newChecklist)}
+                  />
+                  {idea.checklist.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {getChecklistProgress(idea).completed}/{getChecklistProgress(idea).total} completed
+                    </span>
+                  )}
                 </div>
                 <div className="text-[10px]">Updated {new Date(idea.lastActivityAt).toLocaleString()}</div>
               </CardContent>
