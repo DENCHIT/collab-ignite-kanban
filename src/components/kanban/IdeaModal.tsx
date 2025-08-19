@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
 import { AttachmentPreview } from "@/components/ui/attachment-preview";
 import { WatchButton } from "@/components/ui/watch-button";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { MentionInput } from "@/components/ui/mention-input";
 import { CommentReactions } from "@/components/ui/comment-reactions";
 import { Checklist } from "@/components/ui/checklist";
 import { AssigneeSelector } from "@/components/ui/assignee-selector";
@@ -523,9 +523,15 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
             {/* Input Area */}
             <div className="flex flex-col space-y-3">
               <h3 className="text-sm font-medium">Add Comment</h3>
-              <RichTextEditor
-                content={currentComment}
+              <MentionInput
+                value={currentComment}
                 onChange={setCurrentComment}
+                onMention={(email) => {
+                  if (!mentionedUsers.includes(email)) {
+                    setMentionedUsers([...mentionedUsers, email]);
+                  }
+                }}
+                boardMembers={boardMembers}
                 placeholder={replyTo ? "Write a reply... (use @ to mention someone)" : "Add a comment... (use @ to mention someone)"}
                 className="min-h-[120px]"
               />

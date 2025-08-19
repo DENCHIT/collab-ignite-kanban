@@ -244,17 +244,6 @@ export function Column({
                   )}
                 </div>
                 
-                {/* Assignees Display */}
-                {idea.assignees.length > 0 && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <AssigneeAvatars 
-                      assignees={idea.assignees} 
-                      boardMembers={boardMembers}
-                      maxVisible={3}
-                      size="sm"
-                    />
-                  </div>
-                )}
               </CardHeader>
               <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
                 <div className="flex items-center justify-between">
@@ -300,16 +289,6 @@ export function Column({
                     <ChevronDown className="h-3 w-3 mr-1" />
                     {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
                   </Button>
-                  <AssigneeSelector
-                    assignees={idea.assignees}
-                    boardMembers={boardMembers}
-                    onAssigneesChange={(newAssignees) => handleAssigneesChange(idea, newAssignees)}
-                    trigger={
-                      <Button size="sm" variant="outline" className="flex-1 sm:flex-none">
-                        Assign
-                      </Button>
-                    }
-                  />
                   <Button 
                     size="sm" 
                     className="flex-1 sm:flex-none" 
