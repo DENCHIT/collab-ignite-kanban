@@ -31,6 +31,7 @@ export interface IdeaComment {
   attachments?: IdeaCommentAttachment[];
   timestamp: string;
   replyTo?: string; // ID of comment being replied to
+  reactions?: Record<string, string[]>; // emoji -> array of user emails
 }
 
 export interface IdeaCommentAttachment {

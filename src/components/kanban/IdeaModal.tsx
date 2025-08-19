@@ -6,6 +6,7 @@ import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
 import { AttachmentPreview } from "@/components/ui/attachment-preview";
 import { WatchButton } from "@/components/ui/watch-button";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { CommentReactions } from "@/components/ui/comment-reactions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Idea, IdeaComment, IdeaCommentAttachment } from "@/types/idea";
@@ -160,6 +161,65 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
     }
   };
 
+  const handleReaction = async (commentId: string, emoji: string) => {
+    try {
+      const comment = idea.comments.find(c => c.id === commentId);
+      if (!comment) return;
+
+      const reactions = comment.reactions || {};
+      const currentUsers = reactions[emoji] || [];
+      
+      let newUsers: string[];
+      if (currentUsers.includes(currentUserEmail)) {
+        // Remove reaction
+        newUsers = currentUsers.filter(email => email !== currentUserEmail);
+      } else {
+        // Add reaction
+        newUsers = [...currentUsers, currentUserEmail];
+      }
+
+      // Update reactions
+      const newReactions = { ...reactions };
+      if (newUsers.length === 0) {
+        delete newReactions[emoji];
+      } else {
+        newReactions[emoji] = newUsers;
+      }
+
+      // Update comment
+      const updatedComment = { ...comment, reactions: newReactions };
+      const updatedComments = idea.comments.map(c => 
+        c.id === commentId ? updatedComment : c
+      );
+
+      const updatedIdea = {
+        ...idea,
+        comments: updatedComments,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          comments: JSON.parse(JSON.stringify(updatedComments)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', idea.id);
+
+      if (error) throw error;
+
+      onUpdate(updatedIdea);
+    } catch (error) {
+      console.error("Error updating reaction:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update reaction",
+        variant: "destructive",
+      });
+    }
+  };
+
   const extractMentionsFromHtml = (html: string) => {
     const mentions: string[] = [];
     boardMembers.forEach(member => {
@@ -190,6 +250,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
         attachments,
         timestamp: new Date().toISOString(),
         replyTo,
+        reactions: {}, // Initialize empty reactions
       };
 
       const updatedComments = [...idea.comments, newComment];
@@ -423,6 +484,14 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                             <div 
                               className="text-sm prose prose-sm max-w-none"
                               dangerouslySetInnerHTML={{ __html: entry.content || entry.text }}
+                            />
+                            
+                            {/* Reactions */}
+                            <CommentReactions
+                              reactions={entry.reactions}
+                              onReact={(emoji) => handleReaction(entry.id, emoji)}
+                              currentUserEmail={currentUserEmail}
+                              className="mt-2"
                             />
                             
                             {/* Attachments */}
