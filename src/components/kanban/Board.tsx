@@ -233,9 +233,18 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       .filter((it) => (filters.mine && me ? it.creatorName === me : true))
       .filter((it) => (q ? (it.title + " " + (it.description ?? "")).toLowerCase().includes(q) : true))
       .sort((a, b) => {
-        if (filters.highScore) return b.score - a.score;
-        if (filters.recent) return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
-        return 0;
+        // Primary sort: Always by score (highest first)
+        if (a.score !== b.score) {
+          return b.score - a.score;
+        }
+        
+        // Secondary sort: Apply user filters as tiebreaker
+        if (filters.recent) {
+          return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
+        }
+        
+        // Default tiebreaker: most recent activity
+        return new Date(b.lastActivityAt).getTime() - new Date(a.lastActivityAt).getTime();
       })
       .forEach((it) => {
         if (buckets[it.status]) {
