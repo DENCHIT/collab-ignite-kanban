@@ -6,9 +6,9 @@ import { useState } from "react";
 import { getDisplayName } from "@/lib/session";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
+import { AttachmentPreview } from "@/components/ui/attachment-preview";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Download, ExternalLink } from "lucide-react";
 
 export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () => void }) {
   const [comment, setComment] = useState("");
@@ -137,23 +137,26 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
                     <p>{c.text}</p>
                   )}
                   {c.attachments && c.attachments.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {c.attachments.map((attachment) => (
-                        <div key={attachment.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded text-xs">
-                          <span className="flex-1 truncate">{attachment.name}</span>
-                          <span className="text-muted-foreground">
-                            {(attachment.size / 1024 / 1024).toFixed(1)}MB
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(attachment.url, '_blank')}
-                            className="h-6 w-6 p-0"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="mt-2 space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {c.attachments
+                          .filter(att => att.type.startsWith('image/'))
+                          .map((attachment) => (
+                            <AttachmentPreview 
+                              key={attachment.id} 
+                              attachment={attachment} 
+                              showThumbnail 
+                            />
+                          ))}
+                      </div>
+                      {c.attachments
+                        .filter(att => !att.type.startsWith('image/'))
+                        .map((attachment) => (
+                          <AttachmentPreview 
+                            key={attachment.id} 
+                            attachment={attachment} 
+                          />
+                        ))}
                     </div>
                   )}
                 </div>
