@@ -227,7 +227,7 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
           </div>
           
           {/* Right Panel: Discussion */}
-          <div className="lg:w-1/2 flex flex-col">
+          <div className="lg:w-1/2 flex flex-col bg-muted/30 rounded-lg p-4">
             <h3 className="text-sm font-medium mb-3">Activity</h3>
             
             <div className="flex-1 overflow-y-auto space-y-3 pr-2">
