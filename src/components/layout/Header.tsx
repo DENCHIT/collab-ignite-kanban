@@ -29,7 +29,6 @@ export default function Header() {
         <div className="ml-auto flex items-center gap-3">
           <span className="text-sm text-muted-foreground hidden sm:inline">Signed in as</span>
           <div className="text-sm font-medium">{name ?? "Guest"}</div>
-          <Link to="/admin"><Button variant="secondary" size="sm">Admin</Button></Link>
         </div>
       </div>
     </header>
