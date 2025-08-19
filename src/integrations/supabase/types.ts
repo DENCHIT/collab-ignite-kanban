@@ -142,6 +142,7 @@ export type Database = {
           title: string
           updated_at: string
           voters: Json
+          watchers: Json
         }
         Insert: {
           blocked_reason?: string | null
@@ -158,6 +159,7 @@ export type Database = {
           title: string
           updated_at?: string
           voters?: Json
+          watchers?: Json
         }
         Update: {
           blocked_reason?: string | null
@@ -174,6 +176,7 @@ export type Database = {
           title?: string
           updated_at?: string
           voters?: Json
+          watchers?: Json
         }
         Relationships: [
           {
@@ -181,6 +184,47 @@ export type Database = {
             columns: ["board_id"]
             isOneToOne: false
             referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          idea_id: string
+          message: string
+          read: boolean
+          type: string
+          updated_at: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idea_id: string
+          message: string
+          read?: boolean
+          type: string
+          updated_at?: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idea_id?: string
+          message?: string
+          read?: boolean
+          type?: string
+          updated_at?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
             referencedColumns: ["id"]
           },
         ]

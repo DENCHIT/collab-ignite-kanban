@@ -53,6 +53,7 @@ export interface Idea {
   comments: IdeaComment[];
   history: IdeaHistoryItem[];
   blockedReason?: string;
+  watchers: string[]; // Array of user emails watching this idea
 }
 
 export interface Thresholds {

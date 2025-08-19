@@ -29,6 +29,7 @@ const initialIdeas: Idea[] = [
     history: [
       { id: crypto.randomUUID(), type: "created", user: "Avery", timestamp: new Date().toISOString(), details: "Seed idea" },
     ],
+    watchers: [],
   },
   {
     id: crypto.randomUUID(),
@@ -43,6 +44,7 @@ const initialIdeas: Idea[] = [
     history: [
       { id: crypto.randomUUID(), type: "created", user: "Blake", timestamp: new Date().toISOString() },
     ],
+    watchers: [],
   },
 ];
 
@@ -129,7 +131,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
           voters: dbIdea.voters as Record<string, number>,
           comments: dbIdea.comments as any[],
           history: dbIdea.history as any[],
-          blockedReason: dbIdea.blocked_reason
+          blockedReason: dbIdea.blocked_reason,
+          watchers: dbIdea.watchers as string[] || []
         }));
 
         setIdeas(formattedIdeas);
@@ -176,7 +179,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               voters: payload.new.voters as Record<string, number>,
               comments: payload.new.comments as any[],
               history: payload.new.history as any[],
-              blockedReason: payload.new.blocked_reason
+              blockedReason: payload.new.blocked_reason,
+              watchers: payload.new.watchers as string[] || []
             };
             setIdeas(prev => [newIdea, ...prev.filter(idea => idea.id !== newIdea.id)]);
           } else if (payload.eventType === 'UPDATE') {
@@ -191,7 +195,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               voters: payload.new.voters as Record<string, number>,
               comments: payload.new.comments as any[],
               history: payload.new.history as any[],
-              blockedReason: payload.new.blocked_reason
+              blockedReason: payload.new.blocked_reason,
+              watchers: payload.new.watchers as string[] || []
             };
             setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
           } else if (payload.eventType === 'DELETE') {
@@ -396,6 +401,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       history: [
         { id: crypto.randomUUID(), type: "created", user: me, timestamp: now },
       ],
+      watchers: [],
     };
     
     // Insert into database
@@ -413,6 +419,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         voters: JSON.parse(JSON.stringify(newIdea.voters)) as Json,
         comments: JSON.parse(JSON.stringify(newIdea.comments)) as Json,
         history: JSON.parse(JSON.stringify(newIdea.history)) as Json,
+        watchers: newIdea.watchers,
       });
 
     if (error) {
@@ -473,7 +480,9 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} />
         <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} />
       </div>
-      <IdeaModal idea={activeIdea} onClose={() => setActiveIdea(null)} />
+      {activeIdea && <IdeaModal idea={activeIdea} isOpen={!!activeIdea} onClose={() => setActiveIdea(null)} onUpdate={(updatedIdea) => {
+        setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
+      }} />}
     </div>
   );
 }
