@@ -219,7 +219,17 @@ export function Column({
             >
               <CardHeader className="p-3">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-sm flex-1">{idea.title}</CardTitle>
+                  <div className="flex items-center gap-2 flex-1">
+                    <CardTitle className="text-sm">{idea.title}</CardTitle>
+                    {idea.assignees.length > 0 && (
+                      <AssigneeAvatars 
+                        assignees={idea.assignees} 
+                        boardMembers={boardMembers}
+                        maxVisible={2}
+                        size="sm"
+                      />
+                    )}
+                  </div>
                   {canManageBoard && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
