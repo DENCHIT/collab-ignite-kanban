@@ -1,13 +1,102 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Idea } from "@/types/idea";
+import { Idea, IdeaCommentAttachment } from "@/types/idea";
 import { useState } from "react";
 import { getDisplayName } from "@/lib/session";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { FileUpload, UploadedFile } from "@/components/ui/file-upload";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Download, ExternalLink } from "lucide-react";
 
 export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () => void }) {
   const [comment, setComment] = useState("");
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  
   if (!idea) return null;
+
+  const uploadFiles = async (files: UploadedFile[]): Promise<IdeaCommentAttachment[]> => {
+    const attachments: IdeaCommentAttachment[] = [];
+    
+    for (const file of files) {
+      const fileName = `${crypto.randomUUID()}-${file.file.name}`;
+      const filePath = `comments/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('comment-attachments')
+        .upload(filePath, file.file);
+        
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${file.file.name}`,
+          variant: "destructive"
+        });
+        continue;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('comment-attachments')
+        .getPublicUrl(filePath);
+        
+      attachments.push({
+        id: crypto.randomUUID(),
+        name: file.file.name,
+        size: file.file.size,
+        type: file.file.type,
+        url: urlData.publicUrl
+      });
+    }
+    
+    return attachments;
+  };
+
+  const handleSendComment = async () => {
+    if (!comment.trim() && files.length === 0) {
+      toast({
+        title: "Empty comment",
+        description: "Please add some text or attach files"
+      });
+      return;
+    }
+    
+    setIsUploading(true);
+    
+    try {
+      const attachments = files.length > 0 ? await uploadFiles(files) : [];
+      
+      const me = getDisplayName() ?? "Anonymous";
+      const entry = { 
+        id: crypto.randomUUID(), 
+        user: me, 
+        text: comment.replace(/<[^>]*>/g, '').trim(), // Plain text fallback
+        content: comment, // Rich text content
+        attachments,
+        timestamp: new Date().toISOString() 
+      };
+      
+      idea.comments.unshift(entry);
+      setComment("");
+      setFiles([]);
+      
+      toast({
+        title: "Comment added",
+        description: "Your comment has been posted"
+      });
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to post comment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <Dialog open={!!idea} onOpenChange={(open) => !open && onClose()}>
@@ -34,20 +123,64 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
                 <div className="text-sm text-muted-foreground">No comments yet</div>
               )}
               {idea.comments.map((c) => (
-                <div key={c.id} className="text-sm">
-                  <span className="font-medium">{c.user}</span>: {c.text}
-                  <span className="ml-2 text-xs text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</span>
+                <div key={c.id} className="text-sm border-b border-border/50 pb-3 mb-3 last:border-b-0 last:pb-0 last:mb-0">
+                  <div className="flex items-start justify-between mb-1">
+                    <span className="font-medium">{c.user}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</span>
+                  </div>
+                  {c.content ? (
+                    <div 
+                      className="prose prose-sm max-w-none" 
+                      dangerouslySetInnerHTML={{ __html: c.content }}
+                    />
+                  ) : (
+                    <p>{c.text}</p>
+                  )}
+                  {c.attachments && c.attachments.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {c.attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded text-xs">
+                          <span className="flex-1 truncate">{attachment.name}</span>
+                          <span className="text-muted-foreground">
+                            {(attachment.size / 1024 / 1024).toFixed(1)}MB
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(attachment.url, '_blank')}
+                            className="h-6 w-6 p-0"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-            <div className="mt-2 flex gap-2">
-              <input className="flex-1 border rounded px-2 py-1 text-sm bg-background" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Write a comment..." />
-              <Button size="sm" onClick={() => {
-                const me = getDisplayName() ?? "Anonymous";
-                const entry = { id: crypto.randomUUID(), user: me, text: comment, timestamp: new Date().toISOString() };
-                idea.comments.unshift(entry);
-                setComment("");
-              }}>Send</Button>
+            <div className="mt-3 space-y-3">
+              <RichTextEditor
+                content={comment}
+                onChange={setComment}
+                placeholder="Write a comment..."
+              />
+              <FileUpload
+                files={files}
+                onFilesChange={setFiles}
+                maxFiles={5}
+                maxSize={10}
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+              <div className="flex justify-end">
+                <Button 
+                  size="sm" 
+                  onClick={handleSendComment}
+                  disabled={isUploading}
+                >
+                  {isUploading ? "Posting..." : "Send"}
+                </Button>
+              </div>
             </div>
           </div>
           <div>

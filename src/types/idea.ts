@@ -27,7 +27,17 @@ export interface IdeaComment {
   id: string;
   user: string;
   text: string;
+  content?: string; // Rich text content (HTML)
+  attachments?: IdeaCommentAttachment[];
   timestamp: string;
+}
+
+export interface IdeaCommentAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
 }
 
 export interface Idea {
