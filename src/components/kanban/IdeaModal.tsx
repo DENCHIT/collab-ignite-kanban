@@ -14,6 +14,7 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
   const [comment, setComment] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   
   if (!idea) return null;
 
@@ -75,12 +76,34 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
         text: comment.replace(/<[^>]*>/g, '').trim(), // Plain text fallback
         content: comment, // Rich text content
         attachments,
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        replyTo: replyingTo || undefined
       };
       
+      // Add to local state
       idea.comments.unshift(entry);
+      
+      // Save to database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          comments: idea.comments as any,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('id', idea.id);
+        
+      if (error) {
+        console.error('Error saving comment:', error);
+        toast({
+          title: "Save failed", 
+          description: "Comment posted but not saved to database",
+          variant: "destructive"
+        });
+      }
+      
       setComment("");
       setFiles([]);
+      setReplyingTo(null);
       
       toast({
         title: "Comment added",
@@ -116,57 +139,119 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
           {idea.blockedReason && (
             <div className="text-sm">Reason: {idea.blockedReason}</div>
           )}
-          <div>
-            <h3 className="text-sm font-medium mb-2">Comments</h3>
-            <div className="space-y-2 max-h-40 overflow-auto">
+          <div className="flex flex-col h-96">
+            <h3 className="text-sm font-medium mb-3 px-1">Discussion</h3>
+            
+            {/* Chat Messages Area */}
+            <div className="flex-1 overflow-y-auto space-y-3 mb-4 p-1">
               {idea.comments.length === 0 && (
-                <div className="text-sm text-muted-foreground">No comments yet</div>
-              )}
-              {idea.comments.map((c) => (
-                <div key={c.id} className="text-sm border-b border-border/50 pb-3 mb-3 last:border-b-0 last:pb-0 last:mb-0">
-                  <div className="flex items-start justify-between mb-1">
-                    <span className="font-medium">{c.user}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</span>
-                  </div>
-                  {c.content ? (
-                    <div 
-                      className="prose prose-sm max-w-none" 
-                      dangerouslySetInnerHTML={{ __html: c.content }}
-                    />
-                  ) : (
-                    <p>{c.text}</p>
-                  )}
-                  {c.attachments && c.attachments.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {c.attachments
-                          .filter(att => att.type.startsWith('image/'))
-                          .map((attachment) => (
-                            <AttachmentPreview 
-                              key={attachment.id} 
-                              attachment={attachment} 
-                              showThumbnail 
-                            />
-                          ))}
-                      </div>
-                      {c.attachments
-                        .filter(att => !att.type.startsWith('image/'))
-                        .map((attachment) => (
-                          <AttachmentPreview 
-                            key={attachment.id} 
-                            attachment={attachment} 
-                          />
-                        ))}
-                    </div>
-                  )}
+                <div className="text-center text-sm text-muted-foreground py-8">
+                  No comments yet. Start the discussion!
                 </div>
-              ))}
+              )}
+              
+              {idea.comments
+                .slice()
+                .reverse()
+                .map((c) => {
+                  const repliedComment = c.replyTo ? idea.comments.find(comment => comment.id === c.replyTo) : null;
+                  
+                  return (
+                    <div key={c.id} className="group">
+                      {/* Replied to indicator */}
+                      {repliedComment && (
+                        <div className="ml-4 mb-1 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 border-l-2 border-muted">
+                          Replying to <span className="font-medium">{repliedComment.user}</span>: {repliedComment.text.slice(0, 50)}{repliedComment.text.length > 50 ? '...' : ''}
+                        </div>
+                      )}
+                      
+                      {/* Chat Message */}
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-primary">{c.user.charAt(0).toUpperCase()}</span>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium">{c.user}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => setReplyingTo(c.id)}
+                            >
+                              Reply
+                            </Button>
+                          </div>
+                          
+                          <div className="bg-muted/50 rounded-lg px-3 py-2">
+                            {c.content ? (
+                              <div 
+                                className="prose prose-sm max-w-none text-sm" 
+                                dangerouslySetInnerHTML={{ __html: c.content }}
+                              />
+                            ) : (
+                              <p className="text-sm">{c.text}</p>
+                            )}
+                            
+                            {/* Attachments */}
+                            {c.attachments && c.attachments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {c.attachments
+                                    .filter(att => att.type.startsWith('image/'))
+                                    .map((attachment) => (
+                                      <AttachmentPreview 
+                                        key={attachment.id} 
+                                        attachment={attachment} 
+                                        showThumbnail 
+                                      />
+                                    ))}
+                                </div>
+                                {c.attachments
+                                  .filter(att => !att.type.startsWith('image/'))
+                                  .map((attachment) => (
+                                    <AttachmentPreview 
+                                      key={attachment.id} 
+                                      attachment={attachment} 
+                                    />
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
-            <div className="mt-3 space-y-3">
+            
+            {/* Reply indicator */}
+            {replyingTo && (
+              <div className="mb-2 text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2 flex items-center justify-between">
+                <span>
+                  Replying to <span className="font-medium">
+                    {idea.comments.find(c => c.id === replyingTo)?.user}
+                  </span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => setReplyingTo(null)}
+                >
+                  ×
+                </Button>
+              </div>
+            )}
+            
+            {/* Chat Input Area */}
+            <div className="space-y-3 border-t pt-3">
               <RichTextEditor
                 content={comment}
                 onChange={setComment}
-                placeholder="Write a comment..."
+                placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
               />
               <FileUpload
                 files={files}
@@ -175,13 +260,23 @@ export function IdeaModal({ idea, onClose }: { idea: Idea | null; onClose: () =>
                 maxSize={10}
                 accept="image/*,.pdf,.doc,.docx,.txt"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                {replyingTo && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    Cancel Reply
+                  </Button>
+                )}
+                <div className="flex-1" />
                 <Button 
                   size="sm" 
                   onClick={handleSendComment}
                   disabled={isUploading}
                 >
-                  {isUploading ? "Posting..." : "Send"}
+                  {isUploading ? "Posting..." : replyingTo ? "Reply" : "Send"}
                 </Button>
               </div>
             </div>

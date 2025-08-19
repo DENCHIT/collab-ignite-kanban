@@ -30,6 +30,7 @@ export interface IdeaComment {
   content?: string; // Rich text content (HTML)
   attachments?: IdeaCommentAttachment[];
   timestamp: string;
+  replyTo?: string; // ID of comment being replied to
 }
 
 export interface IdeaCommentAttachment {
