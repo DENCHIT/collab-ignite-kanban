@@ -197,9 +197,13 @@ export default function Admin() {
         title: "Passcode reset", 
         description: `New passcode for "${resetPasscodeBoard.name}": ${newPasscode}` 
       });
+      // Optimistically update UI so passcode appears immediately
+      setBoards((prev) => prev.map((b) => 
+        b.board_id === resetPasscodeBoard.board_id ? { ...b, passcode: newPasscode } : b
+      ));
       setResetPasscodeBoard(null);
       setNewPasscode("");
-      fetchBoards(); // Refresh to show new passcode
+      fetchBoards(); // Refresh from server
     }
   }
 
