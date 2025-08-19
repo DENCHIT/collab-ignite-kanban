@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
-import { isAdmin, getUserEmail } from "@/lib/session";
+import { isAdmin, getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -68,6 +68,11 @@ export function Column({
 
   const canManageBoard = isUserAdmin || isManager;
 
+  const getUserVote = (idea: Idea): number | undefined => {
+    const token = getUserToken();
+    return idea.voters[token];
+  };
+
   const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
     if (toStatus === "roadblock") {
       const reason = prompt("Reason for roadblock?") || undefined;
@@ -128,19 +133,21 @@ export function Column({
               <div className="flex flex-wrap items-center gap-2">
                 <Button 
                   size="sm" 
-                  variant="secondary" 
+                  variant={getUserVote(idea) === 1 ? "default" : "secondary"}
                   className="flex-1 sm:flex-none" 
                   onClick={() => onVote(idea.id, 1)}
                 >
-                  Upvote
+                  <ChevronUp className="h-3 w-3 mr-1" />
+                  {getUserVote(idea) === 1 ? "Upvoted" : "Upvote"}
                 </Button>
                 <Button 
                   size="sm" 
-                  variant="secondary" 
+                  variant={getUserVote(idea) === -1 ? "default" : "secondary"}
                   className="flex-1 sm:flex-none" 
                   onClick={() => onVote(idea.id, -1)}
                 >
-                  Downvote
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
                 </Button>
                 <Button 
                   size="sm" 

@@ -247,18 +247,62 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     const ideaToUpdate = ideas.find(it => it.id === id);
     if (!ideaToUpdate) return;
     
-    if (ideaToUpdate.voters[token]) {
-      toast({ title: "Already voted", description: "You cannot vote twice on the same idea." });
-      return;
+    const currentVote = ideaToUpdate.voters[token];
+    let updated: Idea;
+    
+    if (currentVote === delta) {
+      // User clicked the same vote button - remove their vote
+      const newVoters = { ...ideaToUpdate.voters };
+      delete newVoters[token];
+      
+      updated = {
+        ...ideaToUpdate,
+        voters: newVoters,
+        score: ideaToUpdate.score - currentVote,
+        lastActivityAt: new Date().toISOString(),
+      };
+      updated = logHistory(updated, { 
+        type: "voted", 
+        user: me, 
+        timestamp: updated.lastActivityAt, 
+        delta: -currentVote, 
+        details: "Removed vote" 
+      });
+      toast({ title: "Vote removed", description: "You can vote again if you change your mind." });
+    } else if (currentVote) {
+      // User is changing their vote
+      updated = {
+        ...ideaToUpdate,
+        voters: { ...ideaToUpdate.voters, [token]: delta },
+        score: ideaToUpdate.score - currentVote + delta,
+        lastActivityAt: new Date().toISOString(),
+      };
+      updated = logHistory(updated, { 
+        type: "voted", 
+        user: me, 
+        timestamp: updated.lastActivityAt, 
+        delta: delta - currentVote, 
+        details: `Changed vote from ${currentVote > 0 ? '+1' : '-1'} to ${delta > 0 ? '+1' : '-1'}` 
+      });
+      toast({ title: "Vote changed", description: `Changed to ${delta > 0 ? 'upvote' : 'downvote'}` });
+    } else {
+      // User is voting for the first time
+      updated = {
+        ...ideaToUpdate,
+        voters: { ...ideaToUpdate.voters, [token]: delta },
+        score: ideaToUpdate.score + delta,
+        lastActivityAt: new Date().toISOString(),
+      };
+      updated = logHistory(updated, { 
+        type: "voted", 
+        user: me, 
+        timestamp: updated.lastActivityAt, 
+        delta, 
+        details: delta > 0 ? "+1" : "-1" 
+      });
+      toast({ title: "Vote cast", description: `${delta > 0 ? 'Upvoted' : 'Downvoted'} successfully` });
     }
-
-    let updated: Idea = {
-      ...ideaToUpdate,
-      voters: { ...ideaToUpdate.voters, [token]: delta },
-      score: ideaToUpdate.score + delta,
-      lastActivityAt: new Date().toISOString(),
-    };
-    updated = logHistory(updated, { type: "voted", user: me, timestamp: updated.lastActivityAt, delta, details: delta > 0 ? "+1" : "-1" });
+    
     updated = autoMove(updated);
 
     // Update in database
