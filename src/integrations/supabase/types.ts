@@ -91,6 +91,7 @@ export type Database = {
           created_at: string
           id: string
           passcode_hash: string
+          passcode_plain: string | null
           salt: string
           updated_at: string
         }
@@ -99,6 +100,7 @@ export type Database = {
           created_at?: string
           id?: string
           passcode_hash: string
+          passcode_plain?: string | null
           salt?: string
           updated_at?: string
         }
@@ -107,6 +109,7 @@ export type Database = {
           created_at?: string
           id?: string
           passcode_hash?: string
+          passcode_plain?: string | null
           salt?: string
           updated_at?: string
         }
@@ -184,6 +187,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_boards_admin_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          board_id: string
+          created_at: string
+          idea_count: number
+          member_count: number
+          name: string
+          passcode: string
+          slug: string
+          vote_count: number
+        }[]
+      }
       is_board_manager: {
         Args: { _board_slug: string; _user_email: string }
         Returns: boolean
