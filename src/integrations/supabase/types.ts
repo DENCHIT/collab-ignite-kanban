@@ -61,6 +61,7 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           id: string
+          item_type: string | null
           name: string
           slug: string
           updated_at: string
@@ -70,6 +71,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           id?: string
+          item_type?: string | null
           name: string
           slug: string
           updated_at?: string
@@ -79,6 +81,7 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           id?: string
+          item_type?: string | null
           name?: string
           slug?: string
           updated_at?: string
