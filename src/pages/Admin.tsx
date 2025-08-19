@@ -136,7 +136,7 @@ export default function Admin() {
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data, error } = await supabase.rpc('get_boards_admin_data');
+    const { data, error } = await (supabase.rpc as any)('get_boards_admin_data');
     
     if (error) {
       toast({ title: "Load boards failed", description: error.message });
@@ -144,7 +144,7 @@ export default function Admin() {
       return;
     }
 
-    setBoards(data || []);
+    setBoards(Array.isArray(data) ? data : []);
     setLoadingBoards(false);
   }
 
