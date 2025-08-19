@@ -247,10 +247,22 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     const q = filters.q.trim().toLowerCase();
     const me = getDisplayName();
 
+    console.log('Filtering debug:', {
+      userEmail,
+      assignedToMeFilter: filters.assignedToMe,
+      sampleAssignees: ideas.slice(0, 2).map(i => ({ id: i.id, assignees: i.assignees }))
+    });
+
     ideas
       .filter((it) => (filters.blocked ? it.status === "roadblock" : true))
       .filter((it) => (filters.mine && me ? it.creatorName === me : true))
-      .filter((it) => (filters.assignedToMe ? it.assignees.includes(getCurrentUserEmail()) : true))
+      .filter((it) => {
+        if (!filters.assignedToMe) return true;
+        if (!userEmail) return false;
+        const isAssigned = it.assignees.includes(userEmail);
+        console.log(`Idea "${it.title}": assignees=[${it.assignees.join(', ')}], userEmail="${userEmail}", isAssigned=${isAssigned}`);
+        return isAssigned;
+      })
       .filter((it) => (q ? (it.title + " " + (it.description ?? "")).toLowerCase().includes(q) : true))
       .sort((a, b) => {
         // Primary sort: Always by score (highest first)
