@@ -174,13 +174,34 @@ export default function Admin() {
       toast({ title: "Missing fields", description: "Enter name, slug, and passcode." });
       return;
     }
+    
     const { data: userData } = await supabase.auth.getUser();
+    
+    // Create board without passcode (stored separately for security)
     const { data, error } = await supabase
       .from("boards")
-      .insert({ slug, name: boardName, passcode: boardPass, created_by: userData.user?.id, created_by_email: userData.user?.email ?? null })
+      .insert({ 
+        slug, 
+        name: boardName, 
+        created_by: userData.user?.id, 
+        created_by_email: userData.user?.email ?? null 
+      })
       .select()
       .single();
+    
     if (error) return toast({ title: "Create failed", description: error.message });
+    
+    // Set the hashed passcode using the secure function
+    const { error: passcodeError } = await supabase.rpc('set_board_passcode', {
+      _board_id: data.id,
+      _passcode: boardPass
+    });
+    
+    if (passcodeError) {
+      console.error("Error setting passcode:", passcodeError);
+      toast({ title: "Warning", description: "Board created but passcode may not be set correctly." });
+    }
+    
     const link = `${window.location.origin}/b/${data.slug}`;
     toast({ title: "Board created", description: `Share link ${link}` });
     setBoardSlug(data.slug);
@@ -363,7 +384,7 @@ export default function Admin() {
                           {`${window.location.origin}/b/${b.slug}`}
                         </a>
                       </TableCell>
-                      <TableCell>{b.passcode}</TableCell>
+                      <TableCell>***</TableCell>
                       <TableCell>—</TableCell>
                       <TableCell>—</TableCell>
                       <TableCell>

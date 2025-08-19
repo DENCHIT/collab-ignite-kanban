@@ -41,25 +41,50 @@ export default function BoardPage() {
 
   async function handlePasscode() {
     if (slug) {
-      const { data, error } = await supabase.rpc('verify_board_passcode', { _slug: slug, _passcode: passcode });
+      // Use the new secure passcode verification function
+      const { data, error } = await supabase.rpc('verify_board_passcode_secure', { 
+        _slug: slug, 
+        _passcode: passcode 
+      });
+      
       if (error) {
-        toast({ title: "Error verifying passcode", description: error.message });
+        console.error("Error verifying passcode:", error);
+        toast({ 
+          title: "Error", 
+          description: "Failed to verify passcode",
+          variant: "destructive" 
+        });
         return;
       }
+      
       if (data === true) {
-        setTeamPasscode(passcode, slug);
-        toast({ title: "Access granted" });
+        // Store authentication token (not the actual passcode)
+        setTeamPasscode('authenticated', slug);
         setHasAccess(true);
         setStep("email");
-      } else if (passcode === getAdminPasscode()) {
+        toast({ title: "Access granted!" });
+        return;
+      }
+      
+      // Check if it's admin passcode (still needed for admin functions)
+      const adminPass = getAdminPasscode();
+      if (adminPass && passcode === adminPass) {
         setIsAdmin(true);
         setHasAccess(true);
         setStep("email");
-      } else {
-        toast({ title: "Wrong passcode" });
+        toast({ title: "Admin access granted!" });
+        return;
       }
+      
+      toast({ 
+        title: "Access denied", 
+        description: "Invalid passcode",
+        variant: "destructive" 
+      });
       return;
     }
+    
+    // Legacy handling for boards without slug (shouldn't happen in new system)
     const teamCode = getTeamPasscode();
     if (!teamCode) {
       // First admin visit: set initial passcode

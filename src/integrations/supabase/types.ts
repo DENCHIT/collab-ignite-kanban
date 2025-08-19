@@ -62,7 +62,6 @@ export type Database = {
           created_by_email: string | null
           id: string
           name: string
-          passcode: string
           slug: string
           updated_at: string
         }
@@ -72,7 +71,6 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           name: string
-          passcode: string
           slug: string
           updated_at?: string
         }
@@ -82,11 +80,45 @@ export type Database = {
           created_by_email?: string | null
           id?: string
           name?: string
-          passcode?: string
           slug?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      boards_secrets: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          passcode_hash: string
+          salt: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          passcode_hash: string
+          salt?: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          passcode_hash?: string
+          salt?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boards_secrets_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: true
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ideas: {
         Row: {
@@ -156,7 +188,19 @@ export type Database = {
         Args: { _board_slug: string; _user_email: string }
         Returns: boolean
       }
+      is_board_member: {
+        Args: { _board_slug: string; _user_email: string }
+        Returns: boolean
+      }
+      set_board_passcode: {
+        Args: { _board_id: string; _passcode: string }
+        Returns: boolean
+      }
       verify_board_passcode: {
+        Args: { _passcode: string; _slug: string }
+        Returns: boolean
+      }
+      verify_board_passcode_secure: {
         Args: { _passcode: string; _slug: string }
         Returns: boolean
       }
