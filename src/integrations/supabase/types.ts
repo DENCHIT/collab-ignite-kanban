@@ -247,6 +247,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_board_member: {
+        Args: { _display_name: string; _email: string; _slug: string }
+        Returns: boolean
+      }
       get_boards_admin_data: {
         Args: Record<PropertyKey, never>
         Returns: {

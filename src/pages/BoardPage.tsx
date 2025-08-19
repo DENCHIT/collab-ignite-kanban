@@ -92,48 +92,31 @@ export default function BoardPage() {
 
   async function addMemberToBoard(boardSlug: string, userEmail: string, displayName: string) {
     console.log('Adding member to board:', { boardSlug, userEmail, displayName });
-    try {
-      const { data: boardData, error: boardError } = await supabase
-        .from("boards")
-        .select("id")
-        .eq("slug", boardSlug)
-        .single();
+    
+    // Use the new secure function to add member
+    const { data, error } = await supabase.rpc('add_board_member', {
+      _slug: boardSlug,
+      _email: userEmail,
+      _display_name: displayName
+    });
 
-      console.log('Board lookup result:', { boardData, boardError });
+    console.log('Add member result:', { data, error });
 
-      if (boardError) {
-        console.error("Error finding board:", boardError);
-        return;
-      }
-
-      if (boardData) {
-        const { data: memberData, error: memberError } = await supabase
-          .from("board_members")
-          .upsert({
-            board_id: boardData.id,
-            email: userEmail,
-            display_name: displayName,
-            role: "member"
-          }, {
-            onConflict: "board_id,email"
-          })
-          .select();
-
-        console.log('Member upsert result:', { memberData, memberError });
-
-        if (memberError) {
-          console.error("Error adding member to board:", memberError);
-          toast({ 
-            title: "Warning", 
-            description: "Could not register as board member, but you can still use the board" 
-          });
-        } else {
-          console.log('Successfully added member to board');
-          toast({ title: "Welcome to the board!" });
-        }
-      }
-    } catch (error) {
+    if (error) {
       console.error("Error adding member to board:", error);
+      toast({ 
+        title: "Warning", 
+        description: "Could not register as board member, but you can still use the board" 
+      });
+    } else if (data === true) {
+      console.log('Successfully added member to board');
+      toast({ title: "Welcome to the board!" });
+    } else {
+      console.log('Board not found or other issue');
+      toast({ 
+        title: "Warning", 
+        description: "Could not find board to register membership" 
+      });
     }
   }
 
