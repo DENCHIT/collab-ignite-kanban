@@ -33,7 +33,13 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
+  const [localIdea, setLocalIdea] = useState<Idea>(idea); // Local state for immediate updates
   const { toast } = useToast();
+
+  // Sync local state with prop changes
+  useEffect(() => {
+    setLocalIdea(idea);
+  }, [idea]);
 
   // Get current user email from session
   const getCurrentUserEmail = () => {
@@ -50,7 +56,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   };
 
   const currentUserEmail = getCurrentUserEmail();
-  const isWatching = idea.watchers?.includes(currentUserEmail) || false;
+  const isWatching = localIdea.watchers?.includes(currentUserEmail) || false;
 
   // Fetch board members for mentions
   useEffect(() => {
@@ -132,25 +138,30 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   const handleToggleWatch = async () => {
     try {
       const newWatchers = isWatching 
-        ? idea.watchers.filter(email => email !== currentUserEmail)
-        : [...(idea.watchers || []), currentUserEmail];
+        ? localIdea.watchers.filter(email => email !== currentUserEmail)
+        : [...(localIdea.watchers || []), currentUserEmail];
 
       const updatedIdea = {
-        ...idea,
+        ...localIdea,
         watchers: newWatchers,
       };
+
+      // Update local state immediately
+      setLocalIdea(updatedIdea);
 
       // Update in database
       const { error } = await supabase
         .from('ideas')
         .update({ watchers: newWatchers })
-        .eq('id', idea.id);
+        .eq('id', localIdea.id);
 
       if (error) throw error;
 
       onUpdate(updatedIdea);
     } catch (error) {
       console.error("Error toggling watch:", error);
+      // Revert local state on error
+      setLocalIdea(localIdea);
       throw error; // Re-throw so WatchButton can handle it
     }
   };
@@ -163,7 +174,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
 
   const handleReaction = async (commentId: string, emoji: string) => {
     try {
-      const comment = idea.comments.find(c => c.id === commentId);
+      const comment = localIdea.comments.find(c => c.id === commentId);
       if (!comment) return;
 
       const reactions = comment.reactions || {};
@@ -188,26 +199,33 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
 
       // Update comment
       const updatedComment = { ...comment, reactions: newReactions };
-      const updatedComments = idea.comments.map(c => 
+      const updatedComments = localIdea.comments.map(c => 
         c.id === commentId ? updatedComment : c
       );
 
       const updatedIdea = {
-        ...idea,
+        ...localIdea,
         comments: updatedComments,
         lastActivityAt: new Date().toISOString(),
       };
 
-      // Update in database
+      // Update local state immediately for instant UI feedback
+      setLocalIdea(updatedIdea);
+
+      // Update in database (background)
       const { error } = await supabase
         .from('ideas')
         .update({ 
           comments: JSON.parse(JSON.stringify(updatedComments)),
           last_activity_at: new Date().toISOString(),
         })
-        .eq('id', idea.id);
+        .eq('id', localIdea.id);
 
-      if (error) throw error;
+      if (error) {
+        // Revert on error
+        setLocalIdea(localIdea);
+        throw error;
+      }
 
       onUpdate(updatedIdea);
     } catch (error) {
@@ -253,21 +271,24 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
         reactions: {}, // Initialize empty reactions
       };
 
-      const updatedComments = [...idea.comments, newComment];
+      const updatedComments = [...localIdea.comments, newComment];
       
       // Auto-subscribe mentioned users to watch the idea
       const newWatchers = [...new Set([
-        ...(idea.watchers || []),
+        ...(localIdea.watchers || []),
         ...allMentions,
         currentUserEmail, // Auto-watch when commenting
       ])];
 
       const updatedIdea = {
-        ...idea,
+        ...localIdea,
         comments: updatedComments,
         lastActivityAt: new Date().toISOString(),
         watchers: newWatchers,
       };
+
+      // Update local state immediately
+      setLocalIdea(updatedIdea);
 
       // Update in database
       const { error } = await supabase
@@ -277,21 +298,21 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
           last_activity_at: new Date().toISOString(),
           watchers: newWatchers,
         })
-        .eq('id', idea.id);
+        .eq('id', localIdea.id);
 
       if (error) throw error;
 
       // Create notifications for watchers
-      if (idea.watchers && idea.watchers.length > 0) {
-        const notifications = idea.watchers
+      if (localIdea.watchers && localIdea.watchers.length > 0) {
+        const notifications = localIdea.watchers
           .filter(email => email !== currentUserEmail) // Don't notify yourself
           .map(email => ({
             user_email: email,
-            idea_id: idea.id,
+            idea_id: localIdea.id,
             type: allMentions.includes(email) ? 'mention' : 'comment',
             message: allMentions.includes(email) 
-              ? `${currentUserEmail} mentioned you in "${idea.title}"`
-              : `${currentUserEmail} commented on "${idea.title}"`,
+              ? `${currentUserEmail} mentioned you in "${localIdea.title}"`
+              : `${currentUserEmail} commented on "${localIdea.title}"`,
           }));
 
         if (notifications.length > 0) {
@@ -321,13 +342,13 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   // Create all activity entries including creation
   const creationEntry = {
     id: 'creation',
-    user: idea.creatorName,
+    user: localIdea.creatorName,
     text: 'created this idea',
-    timestamp: idea.history.find(h => h.type === 'created')?.timestamp || idea.lastActivityAt,
+    timestamp: localIdea.history.find(h => h.type === 'created')?.timestamp || localIdea.lastActivityAt,
     isCreation: true
   };
 
-  const allEntries = [creationEntry, ...idea.comments.slice().reverse()];
+  const allEntries = [creationEntry, ...localIdea.comments.slice().reverse()];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -335,9 +356,9 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <DialogTitle className="text-lg font-semibold">{idea.title}</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">{localIdea.title}</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-1">
-                {idea.description}
+                {localIdea.description}
               </DialogDescription>
             </div>
             <WatchButton 
@@ -354,14 +375,14 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
           {/* Left Panel: Details & Input */}
           <div className="lg:w-1/2 flex flex-col space-y-4">
             <div className="flex items-center gap-3 text-sm">
-              <Badge variant="secondary">Score {idea.score}</Badge>
-              <Badge>{idea.status}</Badge>
-              {idea.blockedReason && <Badge variant="destructive">Blocked</Badge>}
+              <Badge variant="secondary">Score {localIdea.score}</Badge>
+              <Badge>{localIdea.status}</Badge>
+              {localIdea.blockedReason && <Badge variant="destructive">Blocked</Badge>}
             </div>
             
-            {idea.blockedReason && (
+            {localIdea.blockedReason && (
               <div className="text-sm text-muted-foreground">
-                <strong>Blocked:</strong> {idea.blockedReason}
+                <strong>Blocked:</strong> {localIdea.blockedReason}
               </div>
             )}
             
@@ -370,7 +391,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
               <div className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2 flex items-center justify-between">
                 <span>
                   Replying to <span className="font-medium">
-                    {idea.comments.find(c => c.id === replyTo)?.user}
+                    {localIdea.comments.find(c => c.id === replyTo)?.user}
                   </span>
                 </span>
                 <Button
@@ -438,7 +459,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
               {allEntries.map((entry) => {
                 const isComment = 'content' in entry || 'attachments' in entry;
                 const repliedComment = isComment && 'replyTo' in entry && entry.replyTo 
-                  ? idea.comments.find(comment => comment.id === entry.replyTo) 
+                  ? localIdea.comments.find(comment => comment.id === entry.replyTo) 
                   : null;
                 
                 return (
