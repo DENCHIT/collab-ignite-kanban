@@ -28,6 +28,8 @@ export default function Admin() {
   const [selectedBoard, setSelectedBoard] = useState<any>(null);
   const [boardMembers, setBoardMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [resetPasscodeBoard, setResetPasscodeBoard] = useState<any>(null);
+  const [newPasscode, setNewPasscode] = useState("");
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email ?? null);
@@ -121,15 +123,44 @@ export default function Admin() {
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data, error } = await supabase
+    const { data: boardsData, error } = await supabase
       .from("boards")
       .select("*")
       .order("created_at", { ascending: false });
+    
     if (error) {
       toast({ title: "Load boards failed", description: error.message });
-    } else {
-      setBoards(data ?? []);
+      setLoadingBoards(false);
+      return;
     }
+
+    // Fetch additional data for each board
+    const boardsWithStats = await Promise.all(
+      (boardsData ?? []).map(async (board) => {
+        // Get ideas count and total votes
+        const { data: ideas } = await supabase
+          .from("ideas")
+          .select("score")
+          .eq("board_id", board.id);
+        
+        // Get members count
+        const { data: members } = await supabase
+          .from("board_members")
+          .select("id")
+          .eq("board_id", board.id);
+        
+        const totalVotes = ideas?.reduce((sum, idea) => sum + Math.abs(idea.score), 0) || 0;
+        
+        return {
+          ...board,
+          ideasCount: ideas?.length || 0,
+          totalVotes,
+          membersCount: members?.length || 0
+        };
+      })
+    );
+
+    setBoards(boardsWithStats);
     setLoadingBoards(false);
   }
 
@@ -161,6 +192,29 @@ export default function Admin() {
       if (selectedBoard) {
         fetchBoardMembers(selectedBoard.id);
       }
+    }
+  }
+
+  async function resetBoardPasscode() {
+    if (!resetPasscodeBoard || !newPasscode) {
+      toast({ title: "Missing fields", description: "Enter a new passcode." });
+      return;
+    }
+    
+    const { error } = await supabase.rpc('set_board_passcode', {
+      _board_id: resetPasscodeBoard.id,
+      _passcode: newPasscode
+    });
+    
+    if (error) {
+      toast({ title: "Reset failed", description: error.message });
+    } else {
+      toast({ 
+        title: "Passcode reset", 
+        description: `New passcode for "${resetPasscodeBoard.name}": ${newPasscode}` 
+      });
+      setResetPasscodeBoard(null);
+      setNewPasscode("");
     }
   }
 
@@ -363,50 +417,96 @@ export default function Admin() {
             <div className="overflow-x-auto">
               <Table>
                 <TableCaption>All boards</TableCaption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Slug</TableHead>
-                    <TableHead>Link</TableHead>
-                    <TableHead>Passcode</TableHead>
-                    <TableHead>Ideas</TableHead>
-                    <TableHead>Votes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {boards.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell className="font-medium">{b.name}</TableCell>
-                      <TableCell>{b.slug}</TableCell>
-                     <TableCell>
-                        <a href={`/b/${b.slug}`} className="underline" target="_blank" rel="noreferrer">
-                          {`${window.location.origin}/b/${b.slug}`}
-                        </a>
-                      </TableCell>
-                      <TableCell>***</TableCell>
-                      <TableCell>—</TableCell>
-                      <TableCell>—</TableCell>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead>Name</TableHead>
+                     <TableHead>Slug</TableHead>
+                     <TableHead>Link</TableHead>
+                     <TableHead>Passcode</TableHead>
+                     <TableHead>Ideas</TableHead>
+                     <TableHead>Votes</TableHead>
+                     <TableHead>Members</TableHead>
+                     <TableHead>Actions</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {boards.map((b) => (
+                     <TableRow key={b.id}>
+                       <TableCell className="font-medium">{b.name}</TableCell>
+                       <TableCell>{b.slug}</TableCell>
                       <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBoard(b);
-                            fetchBoardMembers(b.id);
-                          }}
-                        >
-                          View Members
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                         <a href={`/b/${b.slug}`} className="underline" target="_blank" rel="noreferrer">
+                           {`${window.location.origin}/b/${b.slug}`}
+                         </a>
+                       </TableCell>
+                       <TableCell>
+                         <span className="text-xs text-muted-foreground">
+                           Hidden (secure)
+                         </span>
+                       </TableCell>
+                       <TableCell>{b.ideasCount}</TableCell>
+                       <TableCell>{b.totalVotes}</TableCell>
+                       <TableCell>{b.membersCount}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBoard(b);
+                                fetchBoardMembers(b.id);
+                              }}
+                            >
+                              View Members
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setResetPasscodeBoard(b)}
+                            >
+                              Reset Passcode
+                            </Button>
+                          </div>
+                        </TableCell>
+                     </TableRow>
+                   ))}
+                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {resetPasscodeBoard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Reset Passcode - {resetPasscodeBoard.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label>New Passcode</Label>
+              <Input 
+                type="password" 
+                value={newPasscode} 
+                onChange={(e) => setNewPasscode(e.target.value)} 
+                placeholder="Enter new passcode" 
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={resetBoardPasscode}>Update Passcode</Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setResetPasscodeBoard(null);
+                  setNewPasscode("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedBoard && (
         <Card>

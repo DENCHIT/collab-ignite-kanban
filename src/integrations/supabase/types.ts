@@ -196,6 +196,10 @@ export type Database = {
         Args: { _board_id: string; _passcode: string }
         Returns: boolean
       }
+      user_is_board_member: {
+        Args: { _board_id: string; _user_email: string }
+        Returns: boolean
+      }
       verify_board_passcode: {
         Args: { _passcode: string; _slug: string }
         Returns: boolean
