@@ -242,6 +242,36 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          email: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -264,6 +294,21 @@ export type Database = {
           slug: string
           vote_count: number
         }[]
+      }
+      get_my_boards: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          board_id: string
+          board_name: string
+          board_slug: string
+          item_type: string
+          joined_at: string
+          role: string
+        }[]
+      }
+      init_profile_for_current_user: {
+        Args: { _display_name?: string }
+        Returns: string
       }
       is_board_manager: {
         Args: { _board_slug: string; _user_email: string }

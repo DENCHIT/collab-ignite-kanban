@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import BoardPage from "./pages/BoardPage";
 import Admin from "./pages/Admin";
+import Account from "./pages/Account";
 import Header from "./components/layout/Header";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/b/:slug" element={<BoardPage />} />
           <Route path="/" element={<Home />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

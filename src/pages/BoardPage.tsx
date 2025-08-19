@@ -2,155 +2,193 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Board } from "@/components/kanban/Board";
-import { getDisplayName, getUserEmail, setDisplayName, setUserEmail } from "@/lib/session";
-import { useParams } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 export default function BoardPage() {
-  const [hasAccess, setHasAccess] = useState<boolean>(false);
-  const [step, setStep] = useState<"passcode" | "email" | "name" | "board">("passcode");
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isMember, setIsMember] = useState<boolean | null>(null);
   const [passcode, setPasscode] = useState("");
-  const [email, setEmail] = useState("");
-  const [name, setNameInput] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const { slug } = useParams<{ slug?: string }>();
+  const { toast } = useToast();
 
   useEffect(() => {
-    console.log("BoardPage mounted with slug:", slug);
-    const savedName = getDisplayName();
-    const savedEmail = getUserEmail();
-    if (savedName) setNameInput(savedName);
-    if (savedEmail) setEmail(savedEmail);
-    
-    // Skip passcode if user already has credentials (simplified logic)
-    if (savedEmail && savedName && slug) {
-      setHasAccess(true);
-      setStep("board");
-    }
+    checkAuth();
   }, [slug]);
 
-  async function handlePasscode() {
-    if (!slug) {
-      toast({ title: "Error", description: "No board found" });
-      return;
-    }
+  const checkAuth = async () => {
+    try {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        setLoading(false);
+        return;
+      }
 
-    // Use the new secure passcode verification function
-    const { data, error } = await supabase.rpc('verify_board_passcode_secure', { 
-      _slug: slug, 
-      _passcode: passcode 
-    });
+      setUser(session.user);
+
+      // Check if user is already a member of this board
+      if (slug) {
+        const { data: memberStatus, error } = await supabase.rpc('is_board_member', {
+          _board_slug: slug,
+          _user_email: session.user.email
+        });
+
+        if (error) {
+          console.error('Error checking membership:', error);
+          toast({
+            title: "Error",
+            description: "Failed to check board access.",
+            variant: "destructive",
+          });
+        } else {
+          setIsMember(memberStatus === true);
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasscodeVerify = async () => {
+    if (!slug || !user) return;
     
-    if (error) {
-      console.error("Error verifying passcode:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to verify passcode",
-        variant: "destructive" 
+    setVerifying(true);
+    
+    try {
+      // Verify passcode
+      const { data: isValid, error: verifyError } = await supabase.rpc('verify_board_passcode_secure', {
+        _slug: slug,
+        _passcode: passcode.trim()
       });
-      return;
-    }
-    
-    if (data === true) {
-      setHasAccess(true);
-      setStep("email");
-      toast({ title: "Access granted!" });
-      return;
-    }
-    
-    toast({ 
-      title: "Access denied", 
-      description: "Invalid passcode",
-      variant: "destructive" 
-    });
-  }
 
-  function handleEmail() {
-    if (!email.trim() || !email.includes("@")) {
-      toast({ title: "Please enter a valid email" });
-      return;
-    }
-    setStep("name");
-  }
+      if (verifyError) {
+        console.error("Passcode verification error:", verifyError);
+        toast({
+          title: "Error",
+          description: "Failed to verify passcode.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  async function handleName() {
-    if (!name.trim()) {
-      toast({ title: "Please enter a display name" });
-      return;
-    }
-    setDisplayName(name.trim());
-    setUserEmail(email.trim());
-    
-    // Add user to board members
-    if (slug) {
-      await addMemberToBoard(slug, email.trim(), name.trim());
-    }
-    
-    setStep("board");
-  }
+      if (isValid !== true) {
+        toast({
+          title: "Invalid passcode",
+          description: "Please check your passcode and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  async function addMemberToBoard(boardSlug: string, userEmail: string, displayName: string) {
-    console.log('Adding member to board:', { boardSlug, userEmail, displayName });
-    
-    // Use the new secure function to add member
-    const { data, error } = await supabase.rpc('add_board_member', {
-      _slug: boardSlug,
-      _email: userEmail,
-      _display_name: displayName
-    });
+      // Get user profile for display name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .single();
 
-    console.log('Add member result:', { data, error });
-
-    if (error) {
-      console.error("Error adding member to board:", error);
-      toast({ 
-        title: "Warning", 
-        description: "Could not register as board member, but you can still use the board" 
+      // Add user to board
+      const { data: addResult, error: addError } = await supabase.rpc('add_board_member', {
+        _slug: slug,
+        _email: user.email,
+        _display_name: profile?.display_name || user.email?.split('@')[0] || 'User'
       });
-    } else if (data === true) {
-      console.log('Successfully added member to board');
-      toast({ title: "Welcome to the board!" });
-    } else {
-      console.log('Board not found or other issue');
-      toast({ 
-        title: "Warning", 
-        description: "Could not find board to register membership" 
-      });
-    }
-  }
 
-  if (!hasAccess || step !== "board") {
+      if (addError) {
+        console.error("Error adding member:", addError);
+        toast({
+          title: "Warning",
+          description: "Passcode verified but failed to register membership.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (addResult === true) {
+        setIsMember(true);
+        toast({
+          title: "Access granted!",
+          description: "Welcome to the board.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Board not found.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Passcode verification failed:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-20">
+        <div className="max-w-md mx-auto text-center">
+          <div className="text-muted-foreground">Loading board...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to home if not authenticated
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Show passcode form if not a member
+  if (isMember === false) {
+    return (
+      <div className="container mx-auto py-20">
         <div className="max-w-md mx-auto">
           <Card>
             <CardContent className="p-6 space-y-4">
-              {step === "passcode" && (
-                <>
-                  <h1 className="text-xl font-semibold">Enter team passcode</h1>
-                  <Input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="Team passcode" />
-                  <div className="flex gap-2">
-                    <Button onClick={handlePasscode} className="flex-1">Continue</Button>
-                    <Button variant="secondary" onClick={() => setPasscode("")}>Reset</Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Enter the passcode provided by your admin to access this board.</p>
-                </>
-              )}
-              {step === "email" && (
-                <>
-                  <h1 className="text-xl font-semibold">Enter your email</h1>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
-                  <Button onClick={handleEmail}>Continue</Button>
-                </>
-              )}
-              {step === "name" && (
-                <>
-                  <h1 className="text-xl font-semibold">Choose a display name</h1>
-                  <Input value={name} onChange={(e) => setNameInput(e.target.value)} placeholder="Your name" />
-                  <Button onClick={handleName}>Enter board</Button>
-                </>
-              )}
+              <h1 className="text-xl font-semibold">Enter Board Passcode</h1>
+              <p className="text-sm text-muted-foreground">
+                This board requires a passcode to join. Enter the passcode provided by your board administrator.
+              </p>
+              <Input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Board passcode"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePasscodeVerify();
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handlePasscodeVerify} 
+                  disabled={verifying || !passcode.trim()}
+                  className="flex-1"
+                >
+                  {verifying ? "Verifying..." : "Join Board"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPasscode("")}
+                >
+                  Clear
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -158,6 +196,18 @@ export default function BoardPage() {
     );
   }
 
+  // Show loading while checking membership
+  if (isMember === null) {
+    return (
+      <div className="container mx-auto py-20">
+        <div className="max-w-md mx-auto text-center">
+          <div className="text-muted-foreground">Checking access...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show board if user is a member
   return (
     <main className="container mx-auto py-6">
       <Board boardSlug={slug} />
