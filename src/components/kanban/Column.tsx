@@ -2,7 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MoreHorizontal, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
 import { isAdmin, getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -33,6 +34,7 @@ export function Column({
   onMove,
   onVote,
   onOpen,
+  onDelete,
   boardSlug,
 }: {
   title: string;
@@ -41,6 +43,7 @@ export function Column({
   onMove: (id: string, to: IdeaStatus, reason?: string) => void;
   onVote: (id: string, delta: 1 | -1) => void;
   onOpen: (idea: Idea) => void;
+  onDelete: (id: string) => void;
   boardSlug?: string;
 }) {
   const isUserAdmin = isAdmin();
@@ -88,84 +91,96 @@ export function Column({
         <div className="text-sm font-medium">{title}</div>
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
-      <div className="p-2 space-y-2 min-h-[120px]">
-        {ideas.map((idea) => (
-          <Card 
-            key={idea.id} 
-            className={`${statusClass[status]} mb-2`}
-          >
-            <CardHeader className="p-3">
-              <div className="flex items-start justify-between">
-                <CardTitle className="text-sm flex-1">{idea.title}</CardTitle>
-                {canManageBoard && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-md">
-                      {statusOptions
-                        .filter(option => option.value !== status)
-                        .map(option => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            onClick={() => handleMove(idea.id, option.value)}
-                            className="cursor-pointer"
-                          >
-                            Move to {option.label}
-                          </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
-              <div className="flex items-center justify-between">
-                <div>by {idea.creatorName}</div>
-                <div className="flex items-center gap-1">
-                  <Badge variant={idea.status === "roadblock" ? "destructive" : "secondary"}>
-                    Score {idea.score}
-                  </Badge>
+      <ScrollArea className="h-80 p-2">
+        <div className="space-y-2">
+          {ideas.map((idea) => (
+            <Card 
+              key={idea.id} 
+              className={`${statusClass[status]} mb-2 relative`}
+            >
+              <CardHeader className="p-3">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-sm flex-1">{idea.title}</CardTitle>
+                  {canManageBoard && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <MoreHorizontal className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-md">
+                        {statusOptions
+                          .filter(option => option.value !== status)
+                          .map(option => (
+                            <DropdownMenuItem
+                              key={option.value}
+                              onClick={() => handleMove(idea.id, option.value)}
+                              className="cursor-pointer"
+                            >
+                              Move to {option.label}
+                            </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  className={`flex-1 sm:flex-none ${
-                    getUserVote(idea) === 1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
-                  }`}
-                  onClick={() => onVote(idea.id, 1)}
+              </CardHeader>
+              <CardContent className="px-3 pb-3 text-xs text-muted-foreground space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>by {idea.creatorName}</div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={idea.status === "roadblock" ? "destructive" : "secondary"}>
+                      Score {idea.score}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    className={`flex-1 sm:flex-none ${
+                      getUserVote(idea) === 1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
+                    }`}
+                    onClick={() => onVote(idea.id, 1)}
+                  >
+                    <ChevronUp className="h-3 w-3 mr-1" />
+                    {getUserVote(idea) === 1 ? "Upvoted" : "Upvote"}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    className={`flex-1 sm:flex-none ${
+                      getUserVote(idea) === -1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
+                    }`}
+                    onClick={() => onVote(idea.id, -1)}
+                  >
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                    {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1 sm:flex-none" 
+                    onClick={() => onOpen(idea)}
+                  >
+                    Details
+                  </Button>
+                </div>
+                <div className="text-[10px]">Updated {new Date(idea.lastActivityAt).toLocaleString()}</div>
+              </CardContent>
+              {canManageBoard && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute bottom-2 right-2 h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => onDelete(idea.id)}
                 >
-                  <ChevronUp className="h-3 w-3 mr-1" />
-                  {getUserVote(idea) === 1 ? "Upvoted" : "Upvote"}
+                  <Trash2 className="h-3 w-3" />
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  className={`flex-1 sm:flex-none ${
-                    getUserVote(idea) === -1 ? 'bg-vote-active text-vote-active-foreground hover:bg-vote-active/80' : ''
-                  }`}
-                  onClick={() => onVote(idea.id, -1)}
-                >
-                  <ChevronDown className="h-3 w-3 mr-1" />
-                  {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="flex-1 sm:flex-none" 
-                  onClick={() => onOpen(idea)}
-                >
-                  Details
-                </Button>
-              </div>
-              <div className="text-[10px]">Updated {new Date(idea.lastActivityAt).toLocaleString()}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
