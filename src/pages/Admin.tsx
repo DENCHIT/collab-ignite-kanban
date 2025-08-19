@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 
 interface BoardData {
   board_id: string;
@@ -45,6 +46,7 @@ export default function Admin() {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [resetPasscodeBoard, setResetPasscodeBoard] = useState<any>(null);
   const [newPasscode, setNewPasscode] = useState("");
+  const [deleteBoard, setDeleteBoard] = useState<BoardData | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -258,6 +260,23 @@ export default function Admin() {
     fetchBoards();
   }
 
+  async function confirmDeleteBoard() {
+    if (!deleteBoard) return;
+    
+    const { error } = await supabase
+      .from("boards")
+      .delete()
+      .eq("id", deleteBoard.board_id);
+    
+    if (error) {
+      toast({ title: "Delete failed", description: error.message });
+    } else {
+      toast({ title: "Board deleted", description: `"${deleteBoard.name}" has been deleted.` });
+      setBoards(prev => prev.filter(b => b.board_id !== deleteBoard.board_id));
+      setDeleteBoard(null);
+    }
+  }
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(() => {
       toast({ title: "Copied", description: "Passcode copied to clipboard" });
@@ -469,45 +488,47 @@ export default function Admin() {
                        <TableCell>
                          {b.passcode ? (
                            <div className="flex items-center gap-2">
-                             <code className="text-sm bg-muted px-2 py-1 rounded">{b.passcode}</code>
-                             <Button 
-                               variant="ghost" 
+                             <span className="text-sm">{b.passcode}</span>
+                             <Button
                                size="sm"
+                               variant="ghost"
                                onClick={() => copyToClipboard(b.passcode!)}
+                               className="p-1"
                              >
                                <Copy className="h-3 w-3" />
                              </Button>
                            </div>
                          ) : (
-                           <span className="text-xs text-muted-foreground">
-                             Not set (reset to create)
-                           </span>
+                           <span className="text-sm text-muted-foreground">No passcode</span>
                          )}
                        </TableCell>
                        <TableCell>{b.idea_count}</TableCell>
                        <TableCell>{b.vote_count}</TableCell>
                        <TableCell>{b.member_count}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedBoard(b);
-                                fetchBoardMembers(b.board_id);
-                              }}
-                            >
-                              View Members
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setResetPasscodeBoard(b)}
-                            >
-                              Reset Passcode
-                            </Button>
-                          </div>
-                        </TableCell>
+                       <TableCell>
+                         <div className="flex gap-2">
+                           <Button 
+                             size="sm" 
+                             onClick={() => setSelectedBoard(b)}
+                           >
+                             Manage
+                           </Button>
+                           <Button 
+                             size="sm" 
+                             variant="outline"
+                             onClick={() => setResetPasscodeBoard(b)}
+                           >
+                             Reset Passcode
+                           </Button>
+                           <Button 
+                             size="sm" 
+                             variant="destructive"
+                             onClick={() => setDeleteBoard(b)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
                      </TableRow>
                    ))}
                  </TableBody>
@@ -517,119 +538,119 @@ export default function Admin() {
         </CardContent>
       </Card>
 
-      {resetPasscodeBoard && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Reset Passcode - {resetPasscodeBoard.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label>New Passcode</Label>
-              <Input 
-                type="password" 
-                value={newPasscode} 
-                onChange={(e) => setNewPasscode(e.target.value)} 
-                placeholder="Enter new passcode" 
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={resetBoardPasscode}>Update Passcode</Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  setResetPasscodeBoard(null);
-                  setNewPasscode("");
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {selectedBoard && (
         <Card>
           <CardHeader>
-            <CardTitle>Board Members - {selectedBoard.name}</CardTitle>
+            <CardTitle>Managing Board: {selectedBoard.name}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Board members</div>
+              <Button variant="outline" size="sm" onClick={() => setSelectedBoard(null)}>Close</Button>
+            </div>
+            
             {loadingMembers ? (
               <div className="text-sm text-muted-foreground">Loading members...</div>
             ) : boardMembers.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No members have joined this board yet.</div>
+              <div className="text-sm text-muted-foreground">No members found.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableCaption>Board members and their roles</TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Display Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Actions</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Display Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {boardMembers.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>{member.display_name}</TableCell>
+                      <TableCell>
+                        <Badge variant={member.role === 'manager' ? 'default' : 'secondary'}>
+                          {member.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(member.joined_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {member.role === 'member' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => updateMemberRole(member.id, 'manager')}
+                            >
+                              Promote to Manager
+                            </Button>
+                          )}
+                          {member.role === 'manager' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => updateMemberRole(member.id, 'member')}
+                            >
+                              Demote to Member
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {boardMembers.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.display_name}</TableCell>
-                        <TableCell>{member.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={member.role === "manager" ? "default" : "secondary"}>
-                            {member.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(member.joined_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {member.role === "member" ? (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => updateMemberRole(member.id, "manager")}
-                              >
-                                Make Manager
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => updateMemberRole(member.id, "member")}
-                              >
-                                Remove Manager
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-            <div className="mt-4">
-              <Button 
-                variant="secondary" 
-                onClick={() => setSelectedBoard(null)}
-              >
-                Back to Boards
-              </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {resetPasscodeBoard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Reset passcode for: {resetPasscodeBoard.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label>New passcode</Label>
+              <Input 
+                type="password" 
+                value={newPasscode}
+                onChange={(e) => setNewPasscode(e.target.value)}
+                placeholder="Enter new passcode" 
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={resetBoardPasscode}>Update passcode</Button>
+              <Button variant="secondary" onClick={() => {
+                setResetPasscodeBoard(null);
+                setNewPasscode("");
+              }}>Cancel</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Data</CardTitle>
-        </CardHeader>
-        <CardContent className="flex gap-3">
-          <Button variant="secondary" onClick={exportCSV}>Export ideas CSV</Button>
-          <Button onClick={() => toast({ title: "Setup required", description: "Connect Supabase to enable realtime and weekly digests." })}>Enable weekly email digest</Button>
-        </CardContent>
-      </Card>
+      {/* Delete Board Confirmation Dialog */}
+      <Dialog open={!!deleteBoard} onOpenChange={() => setDeleteBoard(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Board</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteBoard?.name}"? This action cannot be undone and will permanently delete all ideas, votes, and member data for this board.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBoard(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteBoard}>
+              Delete Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
