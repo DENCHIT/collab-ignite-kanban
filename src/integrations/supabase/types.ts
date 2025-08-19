@@ -128,6 +128,7 @@ export type Database = {
       }
       ideas: {
         Row: {
+          assignees: Json
           blocked_reason: string | null
           board_id: string
           checklist: Json
@@ -146,6 +147,7 @@ export type Database = {
           watchers: Json
         }
         Insert: {
+          assignees?: Json
           blocked_reason?: string | null
           board_id: string
           checklist?: Json
@@ -164,6 +166,7 @@ export type Database = {
           watchers?: Json
         }
         Update: {
+          assignees?: Json
           blocked_reason?: string | null
           board_id?: string
           checklist?: Json

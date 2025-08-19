@@ -5,6 +5,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { QuickChecklist } from "@/components/ui/quick-checklist";
+import { AssigneeSelector } from "@/components/ui/assignee-selector";
+import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
 import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare } from "lucide-react";
 import { Idea, IdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";

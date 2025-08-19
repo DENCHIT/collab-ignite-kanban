@@ -7,6 +7,7 @@ export interface FiltersState {
   recent: boolean;
   mine: boolean;
   blocked: boolean;
+  assignedToMe: boolean;
 }
 
 export function FiltersBar({ value, onChange }: { value: FiltersState; onChange: (v: FiltersState) => void }) {
@@ -22,6 +23,7 @@ export function FiltersBar({ value, onChange }: { value: FiltersState; onChange:
         <label className="flex items-center gap-2"><Switch checked={value.highScore} onCheckedChange={(v) => onChange({ ...value, highScore: v, recent: v ? false : value.recent })} /> High score</label>
         <label className="flex items-center gap-2"><Switch checked={value.recent} onCheckedChange={(v) => onChange({ ...value, recent: v, highScore: v ? false : value.highScore })} /> Recent</label>
         <label className="flex items-center gap-2"><Switch checked={value.mine} onCheckedChange={(v) => onChange({ ...value, mine: v })} /> My ideas</label>
+        <label className="flex items-center gap-2"><Switch checked={value.assignedToMe} onCheckedChange={(v) => onChange({ ...value, assignedToMe: v })} /> Assigned to me</label>
         <label className="flex items-center gap-2"><Switch checked={value.blocked} onCheckedChange={(v) => onChange({ ...value, blocked: v })} /> Blocked</label>
       </div>
     </div>

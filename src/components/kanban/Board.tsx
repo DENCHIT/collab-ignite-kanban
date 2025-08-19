@@ -31,6 +31,7 @@ const initialIdeas: Idea[] = [
     ],
     watchers: [],
     checklist: [],
+    assignees: [],
   },
   {
     id: crypto.randomUUID(),
@@ -47,6 +48,7 @@ const initialIdeas: Idea[] = [
     ],
     watchers: [],
     checklist: [],
+    assignees: [],
   },
 ];
 
@@ -55,7 +57,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   const [boardName, setBoardName] = useState<string>("Team Ideas Board");
   const [boardItemType, setBoardItemType] = useState<string>("idea");
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false });
+  const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false, assignedToMe: false });
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
   const [boardId, setBoardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,20 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   }, []);
 
   const isUserAdmin = userEmail === "ed@zoby.ai";
+
+  // Helper function to get current user email
+  const getCurrentUserEmail = () => {
+    const userSession = localStorage.getItem('user_session');
+    if (userSession) {
+      try {
+        const session = JSON.parse(userSession);
+        return session.email || 'anonymous@example.com';
+      } catch {
+        return 'anonymous@example.com';
+      }
+    }
+    return 'anonymous@example.com';
+  };
 
   // Load board and ideas from Supabase
   useEffect(() => {
@@ -135,7 +151,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
           history: dbIdea.history as any[],
           blockedReason: dbIdea.blocked_reason,
           watchers: dbIdea.watchers as string[] || [],
-          checklist: dbIdea.checklist as any[] || []
+          checklist: dbIdea.checklist as any[] || [],
+          assignees: dbIdea.assignees as string[] || []
         }));
 
         setIdeas(formattedIdeas);
@@ -184,7 +201,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               history: payload.new.history as any[],
               blockedReason: payload.new.blocked_reason,
               watchers: payload.new.watchers as string[] || [],
-              checklist: payload.new.checklist as any[] || []
+              checklist: payload.new.checklist as any[] || [],
+              assignees: payload.new.assignees as string[] || []
             };
             setIdeas(prev => [newIdea, ...prev.filter(idea => idea.id !== newIdea.id)]);
           } else if (payload.eventType === 'UPDATE') {
@@ -201,7 +219,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               history: payload.new.history as any[],
               blockedReason: payload.new.blocked_reason,
               watchers: payload.new.watchers as string[] || [],
-              checklist: payload.new.checklist as any[] || []
+              checklist: payload.new.checklist as any[] || [],
+              assignees: payload.new.assignees as string[] || []
             };
             setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
           } else if (payload.eventType === 'DELETE') {
@@ -231,6 +250,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     ideas
       .filter((it) => (filters.blocked ? it.status === "roadblock" : true))
       .filter((it) => (filters.mine && me ? it.creatorName === me : true))
+      .filter((it) => (filters.assignedToMe ? it.assignees.includes(getCurrentUserEmail()) : true))
       .filter((it) => (q ? (it.title + " " + (it.description ?? "")).toLowerCase().includes(q) : true))
       .sort((a, b) => {
         // Primary sort: Always by score (highest first)
@@ -417,6 +437,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       ],
       watchers: [],
       checklist: [],
+      assignees: [],
     };
     
     // Insert into database
@@ -436,6 +457,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         history: JSON.parse(JSON.stringify(newIdea.history)) as Json,
         watchers: newIdea.watchers,
         checklist: JSON.parse(JSON.stringify(newIdea.checklist)) as Json,
+        assignees: newIdea.assignees,
       });
 
     if (error) {

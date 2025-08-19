@@ -63,6 +63,7 @@ export interface Idea {
   blockedReason?: string;
   watchers: string[]; // Array of user emails watching this idea
   checklist: IdeaChecklistItem[]; // Array of checklist items
+  assignees: string[]; // Array of user emails assigned to this idea
 }
 
 export interface Thresholds {
