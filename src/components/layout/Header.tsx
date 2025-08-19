@@ -19,7 +19,7 @@ export default function Header() {
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center gap-3">
         <Link to="/" className="font-semibold tracking-tight">
-          Team Idea Kanban
+          Zoby Boards
         </Link>
         <nav className="ml-4 hidden md:flex gap-2 text-sm text-muted-foreground">
           <Link to="/" className={!isAdminRoute ? "text-foreground" : ""}>Board</Link>

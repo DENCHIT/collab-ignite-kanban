@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Board } from "@/components/kanban/Board";
-import { getAdminPasscode, getDisplayName, getTeamPasscode, setAdminPasscode, setDisplayName, setIsAdmin, setTeamPasscode, setUserEmail } from "@/lib/session";
+import { getAdminPasscode, getDisplayName, getTeamPasscode, getUserEmail, setAdminPasscode, setDisplayName, setIsAdmin, setTeamPasscode, setUserEmail } from "@/lib/session";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,13 +19,23 @@ export default function BoardPage() {
   useEffect(() => {
     console.log("BoardPage mounted with slug:", slug);
     const savedName = getDisplayName();
+    const savedEmail = getUserEmail();
     if (savedName) setNameInput(savedName);
+    if (savedEmail) setEmail(savedEmail);
+    
     // If user already unlocked this board, skip passcode step
     const localPass = getTeamPasscode(slug);
     console.log("Local passcode for slug:", localPass);
     if (localPass) {
       setHasAccess(true);
-      setStep("email");
+      // If user already has email and name saved, skip directly to board
+      if (savedEmail && savedName) {
+        setStep("board");
+      } else if (savedEmail) {
+        setStep("name");
+      } else {
+        setStep("email");
+      }
     }
   }, [slug]);
 

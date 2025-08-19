@@ -48,6 +48,7 @@ const initialIdeas: Idea[] = [
 
 export function Board({ boardSlug }: { boardSlug?: string }) {
   const [thresholds] = useState<Thresholds>(loadThresholds(defaultThresholds, boardSlug));
+  const [boardName, setBoardName] = useState<string>("Team Ideas Board");
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false });
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
@@ -69,7 +70,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         // Get board ID from slug
         const { data: board, error: boardError } = await supabase
           .from('boards')
-          .select('id')
+          .select('id, name')
           .eq('slug', boardSlug)
           .single();
 
@@ -82,6 +83,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         if (ignore) return;
         
         setBoardId(board.id);
+        setBoardName(board.name || 'Team Ideas Board');
 
         // Load ideas for this board
         const { data: ideasData, error: ideasError } = await supabase
@@ -362,7 +364,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Team Ideas Board</h1>
+          <h1 className="text-2xl font-semibold">{boardName}</h1>
         </div>
         <div className="text-center py-8">Loading board...</div>
       </div>
@@ -372,7 +374,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Team Ideas Board</h1>
+        <h1 className="text-2xl font-semibold">{boardName}</h1>
         <Button onClick={() => {
           const title = prompt("Idea title");
           if (!title) return;
