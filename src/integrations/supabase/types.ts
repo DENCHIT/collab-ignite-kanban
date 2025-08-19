@@ -196,6 +196,7 @@ export type Database = {
           board_id: string
           created_at: string
           idea_count: number
+          item_type: string
           member_count: number
           name: string
           passcode: string

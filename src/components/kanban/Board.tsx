@@ -49,6 +49,7 @@ const initialIdeas: Idea[] = [
 export function Board({ boardSlug }: { boardSlug?: string }) {
   const [thresholds] = useState<Thresholds>(loadThresholds(defaultThresholds, boardSlug));
   const [boardName, setBoardName] = useState<string>("Team Ideas Board");
+  const [boardItemType, setBoardItemType] = useState<string>("idea");
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FiltersState>({ q: "", highScore: false, recent: true, mine: false, blocked: false });
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
@@ -70,7 +71,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         // Get board ID from slug
         const { data: board, error: boardError } = await supabase
           .from('boards')
-          .select('id, name')
+          .select('id, name, item_type')
           .eq('slug', boardSlug)
           .single();
 
@@ -84,6 +85,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         
         setBoardId(board.id);
         setBoardName(board.name || 'Team Ideas Board');
+        setBoardItemType(board.item_type || 'idea');
 
         // Load ideas for this board
         const { data: ideasData, error: ideasError } = await supabase
@@ -440,11 +442,12 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{boardName}</h1>
         <Button onClick={() => {
-          const title = prompt("Idea title");
+          const itemTypeCapitalized = boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1);
+          const title = prompt(`${itemTypeCapitalized} title`);
           if (!title) return;
           const description = prompt("Optional description");
           addIdea(title, description ?? undefined);
-        }}>New Idea</Button>
+        }}>New {boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1)}</Button>
       </div>
       <FiltersBar value={filters} onChange={setFilters} />
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

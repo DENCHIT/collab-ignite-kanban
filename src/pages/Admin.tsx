@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
@@ -16,6 +17,7 @@ interface BoardData {
   name: string;
   slug: string;
   passcode: string | null;
+  item_type: string;
   idea_count: number;
   vote_count: number;
   member_count: number;
@@ -35,6 +37,7 @@ export default function Admin() {
   const [boardName, setBoardName] = useState("");
   const [boardSlug, setBoardSlug] = useState("");
   const [boardPass, setBoardPass] = useState("");
+  const [boardItemType, setBoardItemType] = useState<"idea" | "task">("idea");
   const [boards, setBoards] = useState<BoardData[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<any>(null);
@@ -226,6 +229,7 @@ export default function Admin() {
       .insert({ 
         slug, 
         name: boardName, 
+        item_type: boardItemType,
         created_by: userData.user?.id, 
         created_by_email: userData.user?.email ?? null 
       })
@@ -250,6 +254,7 @@ export default function Admin() {
     setBoardSlug(data.slug);
     setBoardName("");
     setBoardPass("");
+    setBoardItemType("idea");
     fetchBoards();
   }
 
@@ -379,6 +384,28 @@ export default function Admin() {
             <div>
               <Label>Board passcode</Label>
               <Input type="password" value={boardPass} onChange={(e) => setBoardPass(e.target.value)} placeholder="Set board passcode" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Item Type</Label>
+            <div className="flex items-center gap-3">
+              <Toggle 
+                pressed={boardItemType === "idea"} 
+                onPressedChange={(pressed) => setBoardItemType(pressed ? "idea" : "task")}
+                variant="outline"
+              >
+                Ideas
+              </Toggle>
+              <Toggle 
+                pressed={boardItemType === "task"} 
+                onPressedChange={(pressed) => setBoardItemType(pressed ? "task" : "idea")}
+                variant="outline"
+              >
+                Tasks
+              </Toggle>
+              <span className="text-sm text-muted-foreground">
+                This changes the "New {boardItemType === "idea" ? "Idea" : "Task"}" button text in the board
+              </span>
             </div>
           </div>
           <Button onClick={createBoard}>Create board</Button>
