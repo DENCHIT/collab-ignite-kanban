@@ -152,16 +152,20 @@ export default function Admin() {
   }
 
   async function fetchBoardMembers(boardId: string) {
+    console.log('Fetching members for board:', boardId);
+    console.log('Current user email:', userEmail);
     setLoadingMembers(true);
     const { data, error } = await supabase
       .from("board_members")
       .select("*")
       .eq("board_id", boardId)
       .order("joined_at", { ascending: false });
+    console.log('Members query result:', { data, error });
     if (error) {
       toast({ title: "Load members failed", description: error.message });
     } else {
       setBoardMembers(data ?? []);
+      console.log('Set board members:', data ?? []);
     }
     setLoadingMembers(false);
   }
@@ -486,12 +490,15 @@ export default function Admin() {
                        <TableCell>{b.member_count}</TableCell>
                        <TableCell>
                          <div className="flex gap-2">
-                           <Button 
-                             size="sm" 
-                             onClick={() => setSelectedBoard(b)}
-                           >
-                             Manage
-                           </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setSelectedBoard(b);
+                                fetchBoardMembers(b.board_id);
+                              }}
+                            >
+                              Manage
+                            </Button>
                            <Button 
                              size="sm" 
                              variant="outline"
