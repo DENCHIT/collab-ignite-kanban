@@ -9,6 +9,18 @@ import { toast } from "@/hooks/use-toast";
 import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
 import { supabase } from "@/integrations/supabase/client";
+import { Copy } from "lucide-react";
+
+interface BoardData {
+  board_id: string;
+  name: string;
+  slug: string;
+  passcode: string | null;
+  idea_count: number;
+  vote_count: number;
+  member_count: number;
+  created_at: string;
+}
 
 export default function Admin() {
   const [teamPass, setTeamPass] = useState("");
@@ -23,13 +35,14 @@ export default function Admin() {
   const [boardName, setBoardName] = useState("");
   const [boardSlug, setBoardSlug] = useState("");
   const [boardPass, setBoardPass] = useState("");
-  const [boards, setBoards] = useState<any[]>([]);
+  const [boards, setBoards] = useState<BoardData[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<any>(null);
   const [boardMembers, setBoardMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [resetPasscodeBoard, setResetPasscodeBoard] = useState<any>(null);
   const [newPasscode, setNewPasscode] = useState("");
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email ?? null);
@@ -123,10 +136,7 @@ export default function Admin() {
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data: boardsData, error } = await supabase
-      .from("boards")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.rpc('get_boards_admin_data');
     
     if (error) {
       toast({ title: "Load boards failed", description: error.message });
@@ -134,33 +144,7 @@ export default function Admin() {
       return;
     }
 
-    // Fetch additional data for each board
-    const boardsWithStats = await Promise.all(
-      (boardsData ?? []).map(async (board) => {
-        // Get ideas count and total votes
-        const { data: ideas } = await supabase
-          .from("ideas")
-          .select("score")
-          .eq("board_id", board.id);
-        
-        // Get members count
-        const { data: members } = await supabase
-          .from("board_members")
-          .select("id")
-          .eq("board_id", board.id);
-        
-        const totalVotes = ideas?.reduce((sum, idea) => sum + Math.abs(idea.score), 0) || 0;
-        
-        return {
-          ...board,
-          ideasCount: ideas?.length || 0,
-          totalVotes,
-          membersCount: members?.length || 0
-        };
-      })
-    );
-
-    setBoards(boardsWithStats);
+    setBoards(data || []);
     setLoadingBoards(false);
   }
 
@@ -190,7 +174,7 @@ export default function Admin() {
     } else {
       toast({ title: "Role updated", description: `Member is now a ${newRole}` });
       if (selectedBoard) {
-        fetchBoardMembers(selectedBoard.id);
+        fetchBoardMembers(selectedBoard.board_id);
       }
     }
   }
@@ -202,7 +186,7 @@ export default function Admin() {
     }
     
     const { error } = await supabase.rpc('set_board_passcode', {
-      _board_id: resetPasscodeBoard.id,
+      _board_id: resetPasscodeBoard.board_id,
       _passcode: newPasscode
     });
     
@@ -215,6 +199,7 @@ export default function Admin() {
       });
       setResetPasscodeBoard(null);
       setNewPasscode("");
+      fetchBoards(); // Refresh to show new passcode
     }
   }
 
@@ -259,8 +244,19 @@ export default function Admin() {
     const link = `${window.location.origin}/b/${data.slug}`;
     toast({ title: "Board created", description: `Share link ${link}` });
     setBoardSlug(data.slug);
+    setBoardName("");
+    setBoardPass("");
     fetchBoards();
   }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied", description: "Passcode copied to clipboard" });
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Could not copy to clipboard" });
+    });
+  }
+
   if (userEmail !== "ed@zoby.ai") {
     return (
       <main className="container mx-auto py-6 space-y-6">
@@ -431,7 +427,7 @@ export default function Admin() {
                  </TableHeader>
                  <TableBody>
                    {boards.map((b) => (
-                     <TableRow key={b.id}>
+                     <TableRow key={b.board_id}>
                        <TableCell className="font-medium">{b.name}</TableCell>
                        <TableCell>{b.slug}</TableCell>
                       <TableCell>
@@ -440,13 +436,26 @@ export default function Admin() {
                          </a>
                        </TableCell>
                        <TableCell>
-                         <span className="text-xs text-muted-foreground">
-                           Hidden (secure)
-                         </span>
+                         {b.passcode ? (
+                           <div className="flex items-center gap-2">
+                             <code className="text-sm bg-muted px-2 py-1 rounded">{b.passcode}</code>
+                             <Button 
+                               variant="ghost" 
+                               size="sm"
+                               onClick={() => copyToClipboard(b.passcode!)}
+                             >
+                               <Copy className="h-3 w-3" />
+                             </Button>
+                           </div>
+                         ) : (
+                           <span className="text-xs text-muted-foreground">
+                             Not set (reset to create)
+                           </span>
+                         )}
                        </TableCell>
-                       <TableCell>{b.ideasCount}</TableCell>
-                       <TableCell>{b.totalVotes}</TableCell>
-                       <TableCell>{b.membersCount}</TableCell>
+                       <TableCell>{b.idea_count}</TableCell>
+                       <TableCell>{b.vote_count}</TableCell>
+                       <TableCell>{b.member_count}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button 
@@ -454,7 +463,7 @@ export default function Admin() {
                               size="sm"
                               onClick={() => {
                                 setSelectedBoard(b);
-                                fetchBoardMembers(b.id);
+                                fetchBoardMembers(b.board_id);
                               }}
                             >
                               View Members
@@ -592,5 +601,4 @@ export default function Admin() {
       </Card>
     </main>
   );
-
 }
