@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MoreHorizontal, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import { Idea, IdeaStatus } from "@/types/idea";
-import { isAdmin, getUserEmail, getUserToken } from "@/lib/session";
+import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,8 +46,22 @@ export function Column({
   onDelete: (id: string) => void;
   boardSlug?: string;
 }) {
-  const isUserAdmin = isAdmin();
   const [isManager, setIsManager] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const isUserAdmin = userEmail === "ed@zoby.ai";
 
   useEffect(() => {
     async function checkManagerStatus() {

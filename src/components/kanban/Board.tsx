@@ -5,7 +5,7 @@ import { Idea, IdeaStatus, Thresholds } from "@/types/idea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { IdeaModal } from "./IdeaModal";
-import { getDisplayName, getUserToken, isAdmin, loadThresholds } from "@/lib/session";
+import { getDisplayName, getUserToken, loadThresholds } from "@/lib/session";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -55,6 +55,21 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   const [activeIdea, setActiveIdea] = useState<Idea | null>(null);
   const [boardId, setBoardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const isUserAdmin = userEmail === "ed@zoby.ai";
 
   // Load board and ideas from Supabase
   useEffect(() => {
@@ -333,7 +348,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (!ideaToUpdate) return;
     
     const from = ideaToUpdate.status;
-    if (to === "done" && !isAdmin()) {
+    if (to === "done" && !isUserAdmin) {
       toast({ title: "Only admins can move to Done" });
       return;
     }

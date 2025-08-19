@@ -1,8 +1,5 @@
-const TEAM_PASSCODE_KEY = "kanban_team_passcode";
-const ADMIN_PASSCODE_KEY = "kanban_admin_passcode";
 const DISPLAY_NAME_KEY = "kanban_display_name";
 const USER_TOKEN_KEY = "kanban_user_token";
-const ADMIN_FLAG_KEY = "kanban_is_admin";
 const IDEAS_KEY = "kanban_ideas";
 const THRESHOLDS_KEY = "kanban_thresholds";
 
@@ -30,19 +27,6 @@ export const storage = {
   },
 };
 
-export function getTeamPasscode(boardSlug?: string): string | null {
-  return storage.getRaw(scopedKey(TEAM_PASSCODE_KEY, boardSlug));
-}
-export function setTeamPasscode(code: string, boardSlug?: string) {
-  storage.setRaw(scopedKey(TEAM_PASSCODE_KEY, boardSlug), code);
-}
-
-export function getAdminPasscode(): string | null {
-  return storage.getRaw(ADMIN_PASSCODE_KEY);
-}
-export function setAdminPasscode(code: string) {
-  storage.setRaw(ADMIN_PASSCODE_KEY, code);
-}
 
 export function getDisplayName(): string | null {
   return storage.getRaw(DISPLAY_NAME_KEY);
@@ -67,12 +51,6 @@ export function getUserToken(): string {
   return token;
 }
 
-export function setIsAdmin(flag: boolean) {
-  storage.setRaw(ADMIN_FLAG_KEY, flag ? "true" : "false");
-}
-export function isAdmin(): boolean {
-  return storage.getRaw(ADMIN_FLAG_KEY) === "true";
-}
 
 export function saveIdeas(data: unknown, boardSlug?: string) {
   storage.set(scopedKey(IDEAS_KEY, boardSlug), data);

@@ -8,7 +8,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { loadIdeas, loadThresholds, saveThresholds, setAdminPasscode, setIsAdmin, setTeamPasscode } from "@/lib/session";
+import { loadIdeas, loadThresholds, saveThresholds } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
 import { supabase } from "@/integrations/supabase/client";
 import { Copy, Trash2 } from "lucide-react";
@@ -26,8 +26,6 @@ interface BoardData {
 }
 
 export default function Admin() {
-  const [teamPass, setTeamPass] = useState("");
-  const [adminPass, setAdminPass] = useState("");
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds({ toDiscussion: 5, toProduction: 10, toBacklog: 5 }));
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -366,25 +364,6 @@ export default function Admin() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Access</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Team passcode</Label>
-              <Input type="password" value={teamPass} onChange={(e) => setTeamPass(e.target.value)} placeholder="Set team passcode" />
-              <Button className="mt-2" onClick={() => { setTeamPasscode(teamPass); toast({ title: "Team passcode updated" }); }}>Save</Button>
-            </div>
-            <div>
-              <Label>Admin passcode</Label>
-              <Input type="password" value={adminPass} onChange={(e) => setAdminPass(e.target.value)} placeholder="Set admin passcode" />
-              <Button className="mt-2" onClick={() => { setAdminPasscode(adminPass); setIsAdmin(true); toast({ title: "Admin passcode updated" }); }}>Save</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
