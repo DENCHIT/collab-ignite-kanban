@@ -40,6 +40,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           description: "You've been signed in successfully.",
         });
       } else {
+        try { localStorage.setItem('postAuthRedirect', currentPath); } catch {}
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
           password,

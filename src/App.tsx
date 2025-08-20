@@ -14,6 +14,18 @@ import Header from "./components/layout/Header";
 
 const queryClient = new QueryClient();
 
+const AuthHashHandler: React.FC = () => {
+  React.useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && (hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('type='))) {
+      const next = localStorage.getItem('postAuthRedirect') || '/';
+      const url = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}${hash}`;
+      window.location.replace(url);
+    }
+  }, []);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -21,6 +33,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Header />
+        <AuthHashHandler />
         <Routes>
           <Route path="/b/:slug" element={<BoardPage />} />
           <Route path="/" element={<Home />} />
