@@ -133,6 +133,48 @@ export type Database = {
           },
         ]
       }
+      email_preferences: {
+        Row: {
+          admin_digest: Database["public"]["Enums"]["digest_frequency"]
+          assigned: boolean
+          created_at: string
+          email: string
+          id: string
+          items_moved: boolean
+          mentions: boolean
+          new_board_members: boolean
+          new_items: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_digest?: Database["public"]["Enums"]["digest_frequency"]
+          assigned?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          items_moved?: boolean
+          mentions?: boolean
+          new_board_members?: boolean
+          new_items?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_digest?: Database["public"]["Enums"]["digest_frequency"]
+          assigned?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          items_moved?: boolean
+          mentions?: boolean
+          new_board_members?: boolean
+          new_items?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ideas: {
         Row: {
           assignees: Json
@@ -336,7 +378,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      digest_frequency: "off" | "daily" | "weekly"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -463,6 +505,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      digest_frequency: ["off", "daily", "weekly"],
+    },
   },
 } as const
