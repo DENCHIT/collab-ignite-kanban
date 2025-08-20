@@ -51,13 +51,26 @@ export default function Account() {
 
   const loadUserData = async () => {
     try {
-      // Load profile
-      const { data: profileData, error: profileError } = await supabase
+      // Load profile - create one if it doesn't exist
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .single();
 
-      if (!profileError && profileData) {
+      // If no profile exists, create one
+      if (profileError && profileError.code === 'PGRST116') {
+        const { error: createError } = await supabase.rpc('init_profile_for_current_user');
+        if (!createError) {
+          // Try to load the profile again after creation
+          const { data: newProfileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .single();
+          profileData = newProfileData;
+        }
+      }
+
+      if (profileData) {
         setProfile(profileData);
         setDisplayName(profileData.display_name || "");
         setAvatarUrl(profileData.avatar_url || "");
@@ -86,14 +99,25 @@ export default function Account() {
     setSaving(true);
 
     try {
+      // Use upsert to handle case where profile doesn't exist
       const { error } = await supabase
         .from('profiles')
-        .update({ display_name: displayName.trim() })
-        .eq('user_id', user?.id);
+        .upsert({
+          user_id: user?.id,
+          email: user?.email,
+          display_name: displayName.trim()
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, display_name: displayName.trim() } : null);
+      setProfile(prev => prev ? { ...prev, display_name: displayName.trim() } : {
+        id: '',
+        display_name: displayName.trim(),
+        email: user?.email || '',
+        avatar_url: avatarUrl
+      });
       
       toast({
         title: "Profile updated",
@@ -159,16 +183,27 @@ export default function Account() {
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Update profile
+      // Update profile using upsert
       const { error } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('user_id', user.id);
+        .upsert({
+          user_id: user.id,
+          email: user.email,
+          display_name: displayName || user.email?.split('@')[0] || '',
+          avatar_url: publicUrl
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
       setAvatarUrl(publicUrl);
-      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : {
+        id: '',
+        display_name: displayName || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        avatar_url: publicUrl
+      });
       
       toast({
         title: "Avatar updated",
@@ -198,16 +233,27 @@ export default function Account() {
           .remove([`${user.id}/${fileName}`]);
       }
 
-      // Update profile
+      // Update profile using upsert
       const { error } = await supabase
         .from('profiles')
-        .update({ avatar_url: null })
-        .eq('user_id', user.id);
+        .upsert({
+          user_id: user.id,
+          email: user.email,
+          display_name: displayName || user.email?.split('@')[0] || '',
+          avatar_url: null
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) throw error;
 
       setAvatarUrl("");
-      setProfile(prev => prev ? { ...prev, avatar_url: null } : null);
+      setProfile(prev => prev ? { ...prev, avatar_url: null } : {
+        id: '',
+        display_name: displayName || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        avatar_url: null
+      });
       
       toast({
         title: "Avatar removed",
