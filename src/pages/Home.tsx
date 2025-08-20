@@ -4,11 +4,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import AuthForm from "@/components/auth/AuthForm";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+// Safety net: Auto-redirect authenticated users if they have a saved redirect path
+const RootAutoRedirect = ({ user }: { user: User | null }) => {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (user) {
+      const savedPath = localStorage.getItem('postAuthRedirect');
+      if (savedPath && savedPath !== '/' && savedPath !== '/#') {
+        localStorage.removeItem('postAuthRedirect');
+        navigate(savedPath, { replace: true });
+      }
+    }
+  }, [user, navigate]);
+  
+  return null;
+};
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Add the safety net component
+  const autoRedirect = <RootAutoRedirect user={user} />;
 
   useEffect(() => {
     // Get initial session
@@ -31,6 +51,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="container mx-auto py-20">
+        {autoRedirect}
         <div className="max-w-2xl mx-auto text-center">
           <div className="text-lg text-muted-foreground">Loading...</div>
         </div>
@@ -41,6 +62,7 @@ export default function Home() {
   if (!user) {
     return (
       <div className="container mx-auto py-20">
+        {autoRedirect}
         <div className="max-w-2xl mx-auto text-center space-y-8">
           <div className="mb-8">
             <h1 className="text-6xl font-bold text-primary mb-4">
@@ -59,6 +81,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto py-20">
+      {autoRedirect}
       <div className="max-w-2xl mx-auto text-center">
         <div className="mb-8">
           <h1 className="text-6xl font-bold text-primary mb-4">

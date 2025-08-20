@@ -28,6 +28,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
     try {
       if (isLogin) {
+        try { localStorage.setItem('postAuthRedirect', currentPath); } catch {}
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -41,7 +42,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
         });
       } else {
         try { localStorage.setItem('postAuthRedirect', currentPath); } catch {}
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -60,10 +61,18 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           console.warn('Profile initialization failed:', profileError);
         }
 
-        toast({
-          title: "Account created!",
-          description: "Please check your email to confirm your account.",
-        });
+        // Since email confirmation is disabled, user gets instant session
+        if (data.session) {
+          toast({
+            title: "Welcome!",
+            description: "Your account has been created and you're signed in.",
+          });
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Please check your email to confirm your account.",
+          });
+        }
       }
 
       onSuccess();
@@ -90,6 +99,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
     setLoading(true);
     try {
+      try { localStorage.setItem('postAuthRedirect', currentPath); } catch {}
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: callbackUrl,
       });
