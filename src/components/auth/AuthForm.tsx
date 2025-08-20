@@ -15,7 +15,11 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const { toast } = useToast();
+
+  // Use production URL for redirects
+  const redirectUrl = "https://boards.zoby.ai/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +43,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: redirectUrl,
           },
         });
 
@@ -65,6 +69,40 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
       toast({
         title: "Authentication error",
         description: error.message || "An error occurred during authentication.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address to reset your password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) throw error;
+
+      setResetEmailSent(true);
+      toast({
+        title: "Reset email sent",
+        description: "Check your email for password reset instructions.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Reset failed",
+        description: error.message || "Failed to send reset email.",
         variant: "destructive",
       });
     } finally {
@@ -116,7 +154,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           </Button>
         </form>
         
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-2">
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
@@ -124,6 +162,19 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           >
             {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
           </button>
+          
+          {isLogin && (
+            <div>
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={loading || resetEmailSent}
+                className="text-sm text-muted-foreground hover:text-foreground underline"
+              >
+                {resetEmailSent ? "Reset email sent!" : "Forgot password?"}
+              </button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
