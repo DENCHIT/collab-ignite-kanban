@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload, X } from "lucide-react";
+import EmailPreferences from "@/components/EmailPreferences";
 
 interface Profile {
   id: string;
@@ -292,7 +293,7 @@ export default function Account() {
           <p className="text-muted-foreground">Manage your profile and view your boards</p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-2">
           {/* Profile Section */}
           <Card>
             <CardHeader>
@@ -432,6 +433,11 @@ export default function Account() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Email Preferences Section */}
+        <div className="max-w-2xl mx-auto">
+          <EmailPreferences user={user} />
         </div>
       </div>
     </div>

@@ -1,1 +1,4 @@
 project_id = "sixpcrgvsxfhtthwdbkm"
+
+[functions.send-digest]
+verify_jwt = false

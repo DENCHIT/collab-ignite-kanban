@@ -36,6 +36,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   const [isUploading, setIsUploading] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
+  const [boardId, setBoardId] = useState<string>('');
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
   const [localIdea, setLocalIdea] = useState<Idea>(idea); // Local state for immediate updates
   const { toast } = useToast();
@@ -79,6 +80,8 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
           console.error('Error fetching board:', boardError);
           return;
         }
+
+        setBoardId(board.id);
 
         // Then get board members for this board
         const { data: members, error: membersError } = await supabase
@@ -399,6 +402,23 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
             .insert(notifications);
         }
       }
+
+        // Send email notifications for mentions
+        if (allMentions.length > 0) {
+          try {
+            await supabase.functions.invoke('email-notifications', {
+              body: {
+                event_type: 'mention',
+                board_id: boardId,
+                idea_id: localIdea.id,
+                actor_email: currentUserEmail,
+                recipients: allMentions
+              }
+            });
+          } catch (error) {
+            console.error('Failed to send email notifications:', error);
+          }
+        }
 
       onUpdate(updatedIdea);
       setCurrentComment("");
