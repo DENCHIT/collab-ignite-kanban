@@ -4,9 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Board } from "@/components/kanban/Board";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
+import AuthForm from "@/components/auth/AuthForm";
 
 export default function BoardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -18,7 +19,24 @@ export default function BoardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          // Re-check membership when user signs in
+          checkMembership(session.user);
+        } else {
+          setUser(null);
+          setIsMember(null);
+        }
+      }
+    );
+
+    // Initial auth check
     checkAuth();
+
+    return () => subscription.unsubscribe();
   }, [slug]);
 
   const checkAuth = async () => {
@@ -32,29 +50,35 @@ export default function BoardPage() {
       }
 
       setUser(session.user);
-
-      // Check if user is already a member of this board
-      if (slug) {
-        const { data: memberStatus, error } = await supabase.rpc('is_board_member', {
-          _board_slug: slug,
-          _user_email: session.user.email
-        });
-
-        if (error) {
-          console.error('Error checking membership:', error);
-          toast({
-            title: "Error",
-            description: "Failed to check board access.",
-            variant: "destructive",
-          });
-        } else {
-          setIsMember(memberStatus === true);
-        }
-      }
+      await checkMembership(session.user);
     } catch (error) {
       console.error('Auth check failed:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkMembership = async (user: User) => {
+    if (!slug || !user?.email) return;
+
+    try {
+      const { data: memberStatus, error } = await supabase.rpc('is_board_member', {
+        _board_slug: slug,
+        _user_email: user.email
+      });
+
+      if (error) {
+        console.error('Error checking membership:', error);
+        toast({
+          title: "Error",
+          description: "Failed to check board access.",
+          variant: "destructive",
+        });
+      } else {
+        setIsMember(memberStatus === true);
+      }
+    } catch (error) {
+      console.error('Membership check failed:', error);
     }
   };
 
@@ -147,9 +171,23 @@ export default function BoardPage() {
     );
   }
 
-  // Redirect to home if not authenticated
+  // Show auth form if not authenticated
   if (!user) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="container mx-auto py-20">
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold">Join Board</h1>
+            <p className="text-muted-foreground">
+              Sign in or create an account to access this board
+            </p>
+          </div>
+          <AuthForm onSuccess={() => {
+            // Auth state change will handle the rest
+          }} />
+        </div>
+      </div>
+    );
   }
 
   // Show passcode form if not a member
