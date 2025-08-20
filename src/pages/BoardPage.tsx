@@ -138,6 +138,33 @@ export default function BoardPage() {
 
       if (addResult === true) {
         setIsMember(true);
+        
+        // Get board data for email notification
+        const { data: board } = await supabase
+          .from('boards')
+          .select('id')
+          .eq('slug', slug)
+          .single();
+        
+        // Send email notification to board managers about new member
+        if (board) {
+          try {
+            await supabase.functions.invoke('email-notifications', {
+              body: {
+                event_type: 'new_board_member',
+                board_id: board.id,
+                actor_email: user.email,
+                payload: {
+                  member_name: profile?.display_name || user.email?.split('@')[0] || 'User',
+                  member_email: user.email
+                }
+              }
+            });
+          } catch (emailError) {
+            console.error('Failed to send new member email notifications:', emailError);
+          }
+        }
+        
         toast({
           title: "Access granted!",
           description: "Welcome to the board.",

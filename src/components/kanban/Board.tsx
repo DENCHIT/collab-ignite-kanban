@@ -423,6 +423,26 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (error) {
       console.error('Error updating move:', error);
       toast({ title: "Error", description: "Failed to move idea. Please try again." });
+    } else {
+      // Send email notification for idea move to board managers
+      try {
+        const currentUserEmail = getCurrentUserEmail();
+        await supabase.functions.invoke('email-notifications', {
+          body: {
+            event_type: 'moved',
+            board_id: boardId,
+            idea_id: id,
+            actor_email: currentUserEmail || 'system',
+            payload: {
+              from: ideaToUpdate.status,
+              to: to,
+              reason: reason
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send move email notifications:', emailError);
+      }
     }
   }
 
@@ -475,6 +495,21 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (error) {
       console.error('Error adding idea:', error);
       toast({ title: "Error", description: "Failed to add idea. Please try again." });
+    } else {
+      // Send email notification for new idea to board managers
+      try {
+        const creatorEmail = getCurrentUserEmail();
+        await supabase.functions.invoke('email-notifications', {
+          body: {
+            event_type: 'new_item',
+            board_id: boardId,
+            idea_id: newIdea.id,
+            actor_email: creatorEmail || 'system'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send new idea email notifications:', emailError);
+      }
     }
   }
 
