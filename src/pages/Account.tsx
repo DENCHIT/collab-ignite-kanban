@@ -59,7 +59,7 @@ export default function Account() {
 
       if (!profileError && profileData) {
         setProfile(profileData);
-        setDisplayName(profileData.display_name);
+        setDisplayName(profileData.display_name || "");
         setAvatarUrl(profileData.avatar_url || "");
       }
 
