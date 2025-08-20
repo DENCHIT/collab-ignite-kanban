@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Upload, X } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -32,6 +34,8 @@ export default function Account() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -56,6 +60,7 @@ export default function Account() {
       if (!profileError && profileData) {
         setProfile(profileData);
         setDisplayName(profileData.display_name);
+        setAvatarUrl(profileData.avatar_url || "");
       }
 
       // Load boards
@@ -105,6 +110,120 @@ export default function Account() {
     }
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Remove old avatar if exists
+      if (avatarUrl) {
+        const oldFileName = avatarUrl.split('/').pop();
+        if (oldFileName) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${user.id}/${oldFileName}`]);
+        }
+      }
+
+      // Upload new avatar
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setAvatarUrl(publicUrl);
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload avatar.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!user || !avatarUrl) return;
+
+    setUploading(true);
+    try {
+      // Remove from storage
+      const fileName = avatarUrl.split('/').pop();
+      if (fileName) {
+        await supabase.storage
+          .from('avatars')
+          .remove([`${user.id}/${fileName}`]);
+      }
+
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setAvatarUrl("");
+      setProfile(prev => prev ? { ...prev, avatar_url: null } : null);
+      
+      toast({
+        title: "Avatar removed",
+        description: "Your profile picture has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Remove failed",
+        description: error.message || "Failed to remove avatar.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-20">
@@ -135,6 +254,60 @@ export default function Account() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="relative">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={avatarUrl} alt="Profile picture" />
+                      <AvatarFallback className="text-lg">
+                        {profile?.display_name 
+                          ? profile.display_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                          : (profile?.email || user.email || '').substring(0, 2).toUpperCase()
+                        }
+                      </AvatarFallback>
+                    </Avatar>
+                    {avatarUrl && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                        onClick={removeAvatar}
+                        disabled={uploading}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-center space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                      id="avatar-upload"
+                      disabled={uploading}
+                    />
+                    <Label htmlFor="avatar-upload" className="cursor-pointer">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        disabled={uploading}
+                        asChild
+                      >
+                        <span>
+                          <Upload className="h-4 w-4 mr-2" />
+                          {uploading ? "Uploading..." : "Upload Avatar"}
+                        </span>
+                      </Button>
+                    </Label>
+                    <p className="text-xs text-muted-foreground text-center">
+                      JPG, PNG or GIF. Max 5MB.
+                    </p>
+                  </div>
+                </div>
+
                 <div>
                   <Label htmlFor="email">Email Address</Label>
                   <Input 

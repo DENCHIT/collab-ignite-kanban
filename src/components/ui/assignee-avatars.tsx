@@ -1,6 +1,8 @@
-import { Avatar, AvatarFallback } from "./avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AssigneeAvatarsProps {
   assignees: string[];
@@ -17,8 +19,38 @@ export const AssigneeAvatars = ({
   size = "sm",
   className 
 }: AssigneeAvatarsProps) => {
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
+  
   const visibleAssignees = assignees.slice(0, maxVisible);
   const hiddenCount = Math.max(0, assignees.length - maxVisible);
+
+  useEffect(() => {
+    const loadAvatars = async () => {
+      const urls: Record<string, string> = {};
+      
+      for (const email of assignees) {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('email', email)
+            .single();
+          
+          if (data?.avatar_url) {
+            urls[email] = data.avatar_url;
+          }
+        } catch (error) {
+          // Ignore errors for missing profiles
+        }
+      }
+      
+      setAvatarUrls(urls);
+    };
+
+    if (assignees.length > 0) {
+      loadAvatars();
+    }
+  }, [assignees]);
 
   const getDisplayName = (email: string) => {
     const member = boardMembers.find(m => m.email === email);
@@ -54,6 +86,7 @@ export const AssigneeAvatars = ({
               "border-2 border-background cursor-pointer hover:z-10 transition-transform hover:scale-110",
               sizeClasses[size]
             )}>
+              <AvatarImage src={avatarUrls[email] || ""} alt={getDisplayName(email)} />
               <AvatarFallback className="bg-primary/10 text-primary font-medium">
                 {getInitials(email)}
               </AvatarFallback>

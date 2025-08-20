@@ -186,6 +186,22 @@ export default function Admin() {
     }
   }
 
+  async function removeMember(memberId: string, memberEmail: string) {
+    const { error } = await supabase
+      .from("board_members")
+      .delete()
+      .eq("id", memberId);
+    
+    if (error) {
+      toast({ title: "Remove failed", description: error.message });
+    } else {
+      toast({ title: "Member removed", description: `${memberEmail} removed from board` });
+      if (selectedBoard) {
+        fetchBoardMembers(selectedBoard.board_id);
+      }
+    }
+  }
+
   async function resetBoardPasscode() {
     if (!resetPasscodeBoard || !newPasscode) {
       toast({ title: "Missing fields", description: "Enter a new passcode." });
@@ -581,6 +597,13 @@ export default function Admin() {
                               Demote to Member
                             </Button>
                           )}
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => removeMember(member.id, member.email)}
+                          >
+                            Remove
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
