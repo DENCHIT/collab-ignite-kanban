@@ -18,8 +18,9 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const { toast } = useToast();
 
-  // Use current page URL for redirects to maintain board context
-  const redirectUrl = window.location.href;
+  // Create callback URL with current page as next parameter
+  const currentPath = window.location.pathname + window.location.search;
+  const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +44,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: redirectUrl,
+            emailRedirectTo: callbackUrl,
           },
         });
 
@@ -89,7 +90,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.href,
+        redirectTo: callbackUrl,
       });
 
       if (error) throw error;

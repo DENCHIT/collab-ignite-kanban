@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import BoardPage from "./pages/BoardPage";
 import Admin from "./pages/Admin";
 import Account from "./pages/Account";
+import AuthCallback from "./pages/AuthCallback";
 import Header from "./components/layout/Header";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
