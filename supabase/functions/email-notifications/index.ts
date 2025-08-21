@@ -137,14 +137,27 @@ const serve_handler = async (req: Request): Promise<Response> => {
     let sentCount = 0;
     for (const email of enabledRecipients) {
       try {
+        // Verify recipient is a board member before sending
+        const { data: memberCheck } = await supabase
+          .from('board_members')
+          .select('email')
+          .eq('board_id', board_id)
+          .eq('email', email)
+          .single();
+
+        if (!memberCheck) {
+          console.log(`Skipping email to ${email} - not a board member`);
+          continue;
+        }
+
         await resend.emails.send({
-          from: "Zoby Boards <notifications@resend.dev>",
+          from: "Zoby Boards <noreply@mail.zoby.ai>",
           to: [email],
           subject,
           html,
         });
         sentCount++;
-        console.log(`Email sent to ${email}`);
+        console.log(`Email sent to ${email} for ${event_type} on board ${board?.name}`);
       } catch (error) {
         console.error(`Failed to send email to ${email}:`, error);
       }

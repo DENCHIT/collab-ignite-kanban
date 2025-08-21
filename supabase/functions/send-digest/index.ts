@@ -95,7 +95,7 @@ const serve_handler = async (req: Request): Promise<Response> => {
 
         // Send digest email
         await resend.emails.send({
-          from: "Zoby Boards <digest@resend.dev>",
+          from: "Zoby Boards <noreply@mail.zoby.ai>",
           to: [user.email],
           subject: `Your ${period} Zoby Boards digest`,
           html,

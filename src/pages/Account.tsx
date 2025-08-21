@@ -37,6 +37,8 @@ export default function Account() {
   const [displayName, setDisplayName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -271,6 +273,41 @@ export default function Account() {
     }
   };
 
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testEmail.trim()) return;
+
+    setSendingTest(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('send-test-email', {
+        body: { recipient_email: testEmail.trim() },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      toast({
+        title: "Test email sent",
+        description: `Test email sent to ${testEmail.trim()}`,
+      });
+
+      setTestEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Failed to send test email",
+        description: error.message || "Failed to send test email.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-20">
@@ -439,6 +476,36 @@ export default function Account() {
         <div className="max-w-2xl mx-auto">
           <EmailPreferences user={user} />
         </div>
+
+        {/* Admin Test Email Section */}
+        {user?.email === 'ed@zoby.ai' && (
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Admin: Test Email Delivery</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSendTestEmail} className="space-y-4">
+                <div>
+                  <Label htmlFor="testEmail">Send Test Email To</Label>
+                  <Input
+                    id="testEmail"
+                    type="email"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    placeholder="recipient@example.com"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This will send a test email from noreply@mail.zoby.ai to verify email delivery
+                  </p>
+                </div>
+                <Button type="submit" disabled={sendingTest} className="w-full">
+                  {sendingTest ? "Sending..." : "Send Test Email"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
