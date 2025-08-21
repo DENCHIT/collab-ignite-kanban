@@ -173,7 +173,7 @@ export default function EmailPreferences({ user }: EmailPreferencesProps) {
         </div>
 
         {/* Manager notifications */}
-        {isManager && (
+        {(isManager || isAdmin) && (
           <div>
             <h4 className="font-medium mb-3">Manager Notifications</h4>
             <div className="space-y-3">
