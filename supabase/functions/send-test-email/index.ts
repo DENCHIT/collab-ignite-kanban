@@ -47,7 +47,7 @@ const serve_handler = async (req: Request): Promise<Response> => {
     
     console.log(`Admin ${user.email} sending test email to ${recipient_email}`);
 
-    // Send test email
+    // Send test email via Resend
     await resend.emails.send({
       from: "Zoby Boards <noreply@mail.zoby.ai>",
       to: [recipient_email],
