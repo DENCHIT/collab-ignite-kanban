@@ -45,7 +45,7 @@ const serve_handler = async (req: Request): Promise<Response> => {
 
     const { recipient_email }: TestEmailRequest = await req.json();
     
-    console.log(`Admin ${user.email} sending test email to ${recipient_email}`);
+    console.log(`Admin ${user.email} sending test email to: ${recipient_email}`);
 
     // Send test email via Resend
     await resend.emails.send({
