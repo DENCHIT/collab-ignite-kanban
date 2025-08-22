@@ -279,17 +279,14 @@ export default function Account() {
 
     setSendingTest(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
       const response = await supabase.functions.invoke('send-test-email', {
         body: { recipient_email: testEmail.trim() },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw new Error(response.error.message || 'Failed to send test email');
+      }
 
       toast({
         title: "Test email sent",
@@ -298,6 +295,7 @@ export default function Account() {
 
       setTestEmail("");
     } catch (error: any) {
+      console.error('Test email error:', error);
       toast({
         title: "Failed to send test email",
         description: error.message || "Failed to send test email.",
