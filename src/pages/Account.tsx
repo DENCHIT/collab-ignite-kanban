@@ -45,19 +45,20 @@ export default function Account() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        loadUserData();
+        loadUserData(session.user.id);
       } else {
         setLoading(false);
       }
     });
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = async (uid: string) => {
     try {
       // Load profile - create one if it doesn't exist
       let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
+        .eq('user_id', uid)
         .maybeSingle();
 
       // If no profile exists, create one
@@ -166,7 +167,7 @@ export default function Account() {
 
       // Remove old avatar if exists
       if (avatarUrl) {
-        const oldFileName = avatarUrl.split('/').pop();
+        const oldFileName = avatarUrl.split('/').pop()?.split('?')[0];
         if (oldFileName) {
           await supabase.storage
             .from('avatars')
@@ -229,7 +230,7 @@ export default function Account() {
     setUploading(true);
     try {
       // Remove from storage
-      const fileName = avatarUrl.split('/').pop();
+      const fileName = avatarUrl.split('/').pop()?.split('?')[0];
       if (fileName) {
         await supabase.storage
           .from('avatars')

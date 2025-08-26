@@ -349,7 +349,7 @@ export type Database = {
         }[]
       }
       init_profile_for_current_user: {
-        Args: { _display_name?: string }
+        Args: Record<PropertyKey, never> | { _display_name?: string }
         Returns: string
       }
       is_board_manager: {
