@@ -58,17 +58,17 @@ export default function Account() {
       let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .single();
+        .maybeSingle();
 
       // If no profile exists, create one
-      if (profileError && profileError.code === 'PGRST116') {
+      if (!profileData && !profileError) {
         const { error: createError } = await supabase.rpc('init_profile_for_current_user');
         if (!createError) {
           // Try to load the profile again after creation
           const { data: newProfileData } = await supabase
             .from('profiles')
             .select('*')
-            .single();
+            .maybeSingle();
           profileData = newProfileData;
         }
       }
