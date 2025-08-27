@@ -23,13 +23,27 @@ interface BoardData {
   vote_count: number;
   member_count: number;
   created_at: string;
+  created_by_email?: string;
+}
+
+interface ManagerActivity {
+  email: string;
+  display_name: string;
+  role: 'admin' | 'manager_a' | 'manager_b';
+  assigned_at: string;
+  boards_created: number;
+  total_ideas: number;
+  total_votes: number;
+  total_members: number;
+  manager_b_count: number;
 }
 
 export default function Admin() {
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds({ toDiscussion: 5, toProduction: 10, toBacklog: 5 }));
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [email, setEmail] = useState("ed@zoby.ai");
+  const [userRole, setUserRole] = useState<'admin' | 'manager_a' | 'manager_b' | null>(null);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -45,21 +59,122 @@ export default function Admin() {
   const [resetPasscodeBoard, setResetPasscodeBoard] = useState<any>(null);
   const [newPasscode, setNewPasscode] = useState("");
   const [deleteBoard, setDeleteBoard] = useState<BoardData | null>(null);
+  
+  // Manager management state
+  const [managers, setManagers] = useState<ManagerActivity[]>([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
+  const [newManagerEmail, setNewManagerEmail] = useState("");
+  const [newManagerRole, setNewManagerRole] = useState<'manager_a' | 'manager_b'>('manager_a');
+  const [showAddManager, setShowAddManager] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const email = session?.user?.email ?? null;
+      setUserEmail(email);
+      
+      if (email) {
+        // Check user role after setting email
+        const { data: roleData } = await supabase.rpc('get_user_role', { _user_email: email });
+        setUserRole(roleData);
+      } else {
+        setUserRole(null);
+      }
     });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserEmail(session?.user?.email ?? null);
+    
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const email = session?.user?.email ?? null;
+      setUserEmail(email);
+      
+      if (email) {
+        // Check user role
+        const { data: roleData } = await supabase.rpc('get_user_role', { _user_email: email });
+        setUserRole(roleData);
+      }
     });
+    
     document.title = "Admin Panel — Kanban Boards";
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  useEffect(() => { if (userEmail === "ed@zoby.ai") { fetchBoards(); } }, [userEmail]);
+  useEffect(() => { 
+    if (userEmail && (userEmail === "ed@zoby.ai" || userRole)) { 
+      fetchBoards(); 
+      if (userEmail === "ed@zoby.ai") {
+        fetchManagers();
+      }
+    } 
+  }, [userEmail, userRole]);
+
+  async function fetchManagers() {
+    setLoadingManagers(true);
+    const { data, error } = await supabase.rpc('get_manager_activity');
+    
+    if (error) {
+      console.error("Error fetching managers:", error);
+      toast({ title: "Load managers failed", description: error.message });
+    } else {
+      setManagers(data || []);
+    }
+    setLoadingManagers(false);
+  }
+
+  async function addManager() {
+    if (!newManagerEmail || !newManagerRole) {
+      toast({ title: "Missing fields", description: "Enter email and select role." });
+      return;
+    }
+    
+    // Get user ID from profiles table - user must have signed up and created a profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('email', newManagerEmail)
+      .single();
+    
+    if (profileError || !profile) {
+      toast({ title: "User not found", description: "The user must sign up and log in at least once first." });
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: profile.user_id,
+        email: newManagerEmail,
+        role: newManagerRole,
+        assigned_by: userEmail || 'admin'
+      });
+    
+    if (error) {
+      if (error.code === '23505') { // Unique constraint violation
+        toast({ title: "Already exists", description: "This user already has this role." });
+      } else {
+        toast({ title: "Add manager failed", description: error.message });
+      }
+    } else {
+      toast({ title: "Manager added", description: `${newManagerEmail} is now a ${newManagerRole}` });
+      setNewManagerEmail("");
+      setNewManagerRole('manager_a');
+      setShowAddManager(false);
+      fetchManagers();
+    }
+  }
+
+  async function removeManager(email: string) {
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('email', email);
+    
+    if (error) {
+      toast({ title: "Remove failed", description: error.message });
+    } else {
+      toast({ title: "Manager removed", description: `${email} removed from managers` });
+      fetchManagers();
+    }
+  }
 
   function exportCSV() {
     const ideas = loadIdeas<Idea[]>([]);
@@ -85,20 +200,12 @@ export default function Admin() {
   }
 
   async function signInAdmin() {
-    if (email !== "ed@zoby.ai") {
-      toast({ title: "Access denied", description: "Only ed@zoby.ai can sign in as admin." });
-      return;
-    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return toast({ title: "Sign-in error", description: error.message });
     toast({ title: "Signed in", description: `Welcome ${email}` });
   }
 
   async function signUpAdmin() {
-    if (email !== "ed@zoby.ai") {
-      toast({ title: "Sign-up blocked", description: "Only ed@zoby.ai can be the admin." });
-      return;
-    }
     const redirectUrl = `${window.location.origin}/admin`;
     const { error } = await supabase.auth.signUp({
       email,
@@ -139,7 +246,7 @@ export default function Admin() {
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data, error } = await (supabase.rpc as any)('get_boards_admin_data');
+    const { data, error } = await supabase.rpc('get_accessible_boards');
     
     if (error) {
       toast({ title: "Load boards failed", description: error.message });
@@ -230,9 +337,13 @@ export default function Admin() {
     }
   }
 
+  // Check if user has admin or manager privileges
+  const isAdmin = userEmail === "ed@zoby.ai";
+  const hasManagerAccess = isAdmin || userRole === 'manager_a';
+
   async function createBoard() {
-    if (userEmail !== "ed@zoby.ai") {
-      toast({ title: "Access denied", description: "Only ed@zoby.ai can create boards." });
+    if (!hasManagerAccess) {
+      toast({ title: "Access denied", description: "Only admin and Level A managers can create boards." });
       return;
     }
     const slug = boardSlug || slugify(boardName);
@@ -269,6 +380,17 @@ export default function Admin() {
       toast({ title: "Warning", description: "Board created but passcode may not be set correctly." });
     }
     
+    // Add creator as a board member automatically
+    const { error: memberError } = await supabase.rpc('add_board_member', {
+      _slug: data.slug,
+      _email: userData.user?.email ?? '',
+      _display_name: userData.user?.email?.split('@')[0] ?? 'Manager'
+    });
+    
+    if (memberError) {
+      console.error("Error adding creator as member:", memberError);
+    }
+    
     const link = `${window.location.origin}/b/${data.slug}`;
     toast({ title: "Board created", description: `Share link ${link}` });
     setBoardSlug(data.slug);
@@ -303,7 +425,7 @@ export default function Admin() {
     });
   }
 
-  if (userEmail !== "ed@zoby.ai") {
+  if (!userEmail || (!isAdmin && !userRole)) {
     return (
       <main className="container mx-auto py-6 space-y-6">
         <h1 className="text-2xl font-semibold">Admin Login</h1>
@@ -450,6 +572,135 @@ export default function Admin() {
           <Button className="mt-2" onClick={() => { saveThresholds(thresholds); toast({ title: "Thresholds saved (refresh board)" }); }}>Save thresholds</Button>
         </CardContent>
       </Card>
+
+      {/* Manager Management - Only visible to super admin */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Manager Activity
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowAddManager(true)}
+              >
+                Add Manager
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingManagers ? (
+              <div className="text-sm text-muted-foreground">Loading managers...</div>
+            ) : managers.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No managers found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableCaption>Manager activity and statistics</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead>Boards</TableHead>
+                      <TableHead>Ideas</TableHead>
+                      <TableHead>Votes</TableHead>
+                      <TableHead>Members</TableHead>
+                      <TableHead>Level B Mgrs</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {managers.map((manager) => (
+                      <TableRow key={manager.email}>
+                        <TableCell className="font-medium">{manager.email}</TableCell>
+                        <TableCell>{manager.display_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            manager.role === 'admin' ? 'default' :
+                            manager.role === 'manager_a' ? 'secondary' : 'outline'
+                          }>
+                            {manager.role === 'admin' ? 'Super Admin' :
+                             manager.role === 'manager_a' ? 'Level A Manager' :
+                             'Level B Manager'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(manager.assigned_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{manager.boards_created}</TableCell>
+                        <TableCell>{manager.total_ideas}</TableCell>
+                        <TableCell>{manager.total_votes}</TableCell>
+                        <TableCell>{manager.total_members}</TableCell>
+                        <TableCell>{manager.manager_b_count}</TableCell>
+                        <TableCell>
+                          {manager.role !== 'admin' && (
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => removeManager(manager.email)}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Manager Dialog */}
+      {showAddManager && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Manager</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Email</Label>
+                <Input 
+                  type="email" 
+                  value={newManagerEmail}
+                  onChange={(e) => setNewManagerEmail(e.target.value)}
+                  placeholder="manager@company.com" 
+                />
+              </div>
+              <div>
+                <Label>Role</Label>
+                <div className="flex gap-2">
+                  <Toggle 
+                    pressed={newManagerRole === 'manager_a'} 
+                    onPressedChange={(pressed) => pressed && setNewManagerRole('manager_a')}
+                    variant="outline"
+                  >
+                    Level A (Can create boards)
+                  </Toggle>
+                  <Toggle 
+                    pressed={newManagerRole === 'manager_b'} 
+                    onPressedChange={(pressed) => pressed && setNewManagerRole('manager_b')}
+                    variant="outline"
+                  >
+                    Level B (Board management only)
+                  </Toggle>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={addManager}>Add Manager</Button>
+              <Button variant="secondary" onClick={() => {
+                setShowAddManager(false);
+                setNewManagerEmail("");
+                setNewManagerRole('manager_a');
+              }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

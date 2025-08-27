@@ -314,6 +314,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          created_at: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          created_at?: string
+          email: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          created_at?: string
+          email?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -322,6 +355,21 @@ export type Database = {
       add_board_member: {
         Args: { _display_name: string; _email: string; _slug: string }
         Returns: boolean
+      }
+      get_accessible_boards: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          board_id: string
+          created_at: string
+          created_by_email: string
+          idea_count: number
+          item_type: string
+          member_count: number
+          name: string
+          passcode: string
+          slug: string
+          vote_count: number
+        }[]
       }
       get_boards_admin_data: {
         Args: Record<PropertyKey, never>
@@ -337,6 +385,20 @@ export type Database = {
           vote_count: number
         }[]
       }
+      get_manager_activity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          assigned_at: string
+          boards_created: number
+          display_name: string
+          email: string
+          manager_b_count: number
+          role: Database["public"]["Enums"]["app_role"]
+          total_ideas: number
+          total_members: number
+          total_votes: number
+        }[]
+      }
       get_my_boards: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -347,6 +409,17 @@ export type Database = {
           joined_at: string
           role: string
         }[]
+      }
+      get_user_role: {
+        Args: { _user_email: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_email: string
+        }
+        Returns: boolean
       }
       init_profile_for_current_user: {
         Args: Record<PropertyKey, never> | { _display_name?: string }
@@ -378,6 +451,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "manager_a" | "manager_b"
       digest_frequency: "off" | "daily" | "weekly"
     }
     CompositeTypes: {
@@ -506,6 +580,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "manager_a", "manager_b"],
       digest_frequency: ["off", "daily", "weekly"],
     },
   },
