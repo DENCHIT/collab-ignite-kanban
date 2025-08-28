@@ -389,10 +389,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           assigned_at: string
+          assistant_count: number
           boards_created: number
           display_name: string
           email: string
-          manager_b_count: number
           role: Database["public"]["Enums"]["app_role"]
           total_ideas: number
           total_members: number
@@ -451,7 +451,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager_a" | "manager_b"
+      app_role: "admin" | "manager"
       digest_frequency: "off" | "daily" | "weekly"
     }
     CompositeTypes: {
@@ -580,7 +580,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager_a", "manager_b"],
+      app_role: ["admin", "manager"],
       digest_frequency: ["off", "daily", "weekly"],
     },
   },

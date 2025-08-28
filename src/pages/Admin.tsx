@@ -29,20 +29,20 @@ interface BoardData {
 interface ManagerActivity {
   email: string;
   display_name: string;
-  role: 'admin' | 'manager_a' | 'manager_b';
+  role: 'admin' | 'manager';
   assigned_at: string;
   boards_created: number;
   total_ideas: number;
   total_votes: number;
   total_members: number;
-  manager_b_count: number;
+  assistant_count: number;
 }
 
 export default function Admin() {
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds({ toDiscussion: 5, toProduction: 10, toBacklog: 5 }));
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'manager_a' | 'manager_b' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -64,7 +64,7 @@ export default function Admin() {
   const [managers, setManagers] = useState<ManagerActivity[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
   const [newManagerEmail, setNewManagerEmail] = useState("");
-  const [newManagerRole, setNewManagerRole] = useState<'manager_a' | 'manager_b'>('manager_a');
+  const [newManagerRole, setNewManagerRole] = useState<'manager'>('manager');
   const [showAddManager, setShowAddManager] = useState(false);
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function Admin() {
     } else {
       toast({ title: "Manager added", description: `${newManagerEmail} is now a ${newManagerRole}` });
       setNewManagerEmail("");
-      setNewManagerRole('manager_a');
+      setNewManagerRole('manager');
       setShowAddManager(false);
       fetchManagers();
     }
@@ -277,7 +277,7 @@ export default function Admin() {
     setLoadingMembers(false);
   }
 
-  async function updateMemberRole(memberId: string, newRole: "member" | "manager") {
+  async function updateMemberRole(memberId: string, newRole: "member" | "manager" | "assistant") {
     const { error } = await supabase
       .from("board_members")
       .update({ role: newRole })
@@ -339,7 +339,7 @@ export default function Admin() {
 
   // Check if user has admin or manager privileges
   const isAdmin = userEmail === "ed@zoby.ai";
-  const hasManagerAccess = isAdmin || userRole === 'manager_a';
+  const hasManagerAccess = isAdmin || userRole === 'manager';
 
   async function createBoard() {
     if (!hasManagerAccess) {
@@ -607,7 +607,7 @@ export default function Admin() {
                       <TableHead>Ideas</TableHead>
                       <TableHead>Votes</TableHead>
                       <TableHead>Members</TableHead>
-                      <TableHead>Level B Mgrs</TableHead>
+                      <TableHead>Board Assistants</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -618,12 +618,9 @@ export default function Admin() {
                         <TableCell>{manager.display_name}</TableCell>
                         <TableCell>
                           <Badge variant={
-                            manager.role === 'admin' ? 'default' :
-                            manager.role === 'manager_a' ? 'secondary' : 'outline'
+                            manager.role === 'admin' ? 'default' : 'secondary'
                           }>
-                            {manager.role === 'admin' ? 'Super Admin' :
-                             manager.role === 'manager_a' ? 'Level A Manager' :
-                             'Level B Manager'}
+                            {manager.role === 'admin' ? 'Super Admin' : 'Manager'}
                           </Badge>
                         </TableCell>
                         <TableCell>{new Date(manager.assigned_at).toLocaleDateString()}</TableCell>
@@ -631,7 +628,7 @@ export default function Admin() {
                         <TableCell>{manager.total_ideas}</TableCell>
                         <TableCell>{manager.total_votes}</TableCell>
                         <TableCell>{manager.total_members}</TableCell>
-                        <TableCell>{manager.manager_b_count}</TableCell>
+                        <TableCell>{manager.assistant_count}</TableCell>
                         <TableCell>
                           {manager.role !== 'admin' && (
                             <Button 
@@ -674,18 +671,11 @@ export default function Admin() {
                 <Label>Role</Label>
                 <div className="flex gap-2">
                   <Toggle 
-                    pressed={newManagerRole === 'manager_a'} 
-                    onPressedChange={(pressed) => pressed && setNewManagerRole('manager_a')}
+                    pressed={newManagerRole === 'manager'} 
+                    onPressedChange={(pressed) => pressed && setNewManagerRole('manager')}
                     variant="outline"
                   >
-                    Level A (Can create boards)
-                  </Toggle>
-                  <Toggle 
-                    pressed={newManagerRole === 'manager_b'} 
-                    onPressedChange={(pressed) => pressed && setNewManagerRole('manager_b')}
-                    variant="outline"
-                  >
-                    Level B (Board management only)
+                    Manager (Can create boards and manage them)
                   </Toggle>
                 </div>
               </div>
@@ -695,7 +685,7 @@ export default function Admin() {
               <Button variant="secondary" onClick={() => {
                 setShowAddManager(false);
                 setNewManagerEmail("");
-                setNewManagerRole('manager_a');
+                setNewManagerRole('manager');
               }}>Cancel</Button>
             </div>
           </CardContent>
@@ -828,35 +818,26 @@ export default function Admin() {
                         </Badge>
                       </TableCell>
                       <TableCell>{new Date(member.joined_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {member.role === 'member' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateMemberRole(member.id, 'manager')}
-                            >
-                              Promote to Manager
-                            </Button>
-                          )}
-                          {member.role === 'manager' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateMemberRole(member.id, 'member')}
-                            >
-                              Demote to Member
-                            </Button>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => removeMember(member.id, member.email)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         <div className="flex gap-1">
+                           <select 
+                             value={member.role} 
+                             onChange={(e) => updateMemberRole(member.id, e.target.value as "member" | "manager" | "assistant")}
+                             className="text-sm border rounded px-2 py-1"
+                           >
+                             <option value="member">Member</option>
+                             <option value="manager">Board Manager</option>
+                             <option value="assistant">Board Assistant</option>
+                           </select>
+                           <Button 
+                             size="sm" 
+                             variant="destructive"
+                             onClick={() => removeMember(member.id, member.email)}
+                           >
+                             Remove
+                           </Button>
+                         </div>
+                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
