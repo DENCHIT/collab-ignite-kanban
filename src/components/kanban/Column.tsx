@@ -72,30 +72,49 @@ export function Column({
 
   useEffect(() => {
     async function checkBoardRole() {
-      if (!boardSlug || isUserAdmin) return;
+      console.log('checkBoardRole called with:', { boardSlug, isUserAdmin });
+      
+      if (!boardSlug || isUserAdmin) {
+        console.log('Early return - no boardSlug or is admin');
+        return;
+      }
       
       const userEmail = getUserEmail();
-      if (!userEmail) return;
+      console.log('User email from session:', userEmail);
+      if (!userEmail) {
+        console.log('No user email found');
+        return;
+      }
       
       // Check if user is manager or assistant
+      console.log('Checking manager status...');
       const { data: managerData, error: managerError } = await supabase.rpc('is_board_manager', {
         _board_slug: boardSlug,
         _user_email: userEmail
       });
       
+      console.log('Manager check result:', { managerData, managerError });
+      
       if (!managerError && managerData === true) {
+        console.log('User is manager, setting isManagerOrAssistant to true');
         setIsManagerOrAssistant(true);
         return;
       }
 
       // Check if user is assistant
+      console.log('Checking assistant status...');
       const { data: assistantData, error: assistantError } = await supabase.rpc('is_board_assistant', {
         _board_slug: boardSlug,
         _user_email: userEmail
       });
       
+      console.log('Assistant check result:', { assistantData, assistantError });
+      
       if (!assistantError && assistantData === true) {
+        console.log('User is assistant, setting isManagerOrAssistant to true');
         setIsManagerOrAssistant(true);
+      } else {
+        console.log('User is neither manager nor assistant');
       }
     }
     
@@ -143,6 +162,15 @@ export function Column({
   }, [boardSlug]);
 
   const canManageBoard = isUserAdmin || isManagerOrAssistant;
+  
+  // Debug logging
+  console.log('Debug permissions:', {
+    userEmail,
+    isUserAdmin,
+    isManagerOrAssistant,
+    canManageBoard,
+    boardSlug
+  });
 
   const getUserVote = (idea: Idea): number | undefined => {
     const token = getUserToken();
