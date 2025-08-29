@@ -52,7 +52,7 @@ export function Column({
   boardSlug?: string;
   onUpdateIdea?: (updatedIdea: Idea) => void;
 }) {
-  const [isManager, setIsManager] = useState(false);
+  const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [boardMembers, setBoardMembers] = useState<Array<{ email: string; display_name: string }>>([]);
 
@@ -71,23 +71,35 @@ export function Column({
   const isUserAdmin = userEmail === "ed@zoby.ai";
 
   useEffect(() => {
-    async function checkManagerStatus() {
+    async function checkBoardRole() {
       if (!boardSlug || isUserAdmin) return;
       
       const userEmail = getUserEmail();
       if (!userEmail) return;
       
-      const { data, error } = await supabase.rpc('is_board_manager', {
+      // Check if user is manager or assistant
+      const { data: managerData, error: managerError } = await supabase.rpc('is_board_manager', {
         _board_slug: boardSlug,
         _user_email: userEmail
       });
       
-      if (!error && data === true) {
-        setIsManager(true);
+      if (!managerError && managerData === true) {
+        setIsManagerOrAssistant(true);
+        return;
+      }
+
+      // Check if user is assistant
+      const { data: assistantData, error: assistantError } = await supabase.rpc('is_board_assistant', {
+        _board_slug: boardSlug,
+        _user_email: userEmail
+      });
+      
+      if (!assistantError && assistantData === true) {
+        setIsManagerOrAssistant(true);
       }
     }
     
-    checkManagerStatus();
+    checkBoardRole();
   }, [boardSlug, isUserAdmin]);
 
   // Fetch board members for assignee functionality
@@ -130,7 +142,7 @@ export function Column({
     }
   }, [boardSlug]);
 
-  const canManageBoard = isUserAdmin || isManager;
+  const canManageBoard = isUserAdmin || isManagerOrAssistant;
 
   const getUserVote = (idea: Idea): number | undefined => {
     const token = getUserToken();
