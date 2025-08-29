@@ -425,6 +425,10 @@ export type Database = {
         Args: Record<PropertyKey, never> | { _display_name?: string }
         Returns: string
       }
+      is_board_assistant: {
+        Args: { _board_slug: string; _user_email: string }
+        Returns: boolean
+      }
       is_board_manager: {
         Args: { _board_slug: string; _user_email: string }
         Returns: boolean
