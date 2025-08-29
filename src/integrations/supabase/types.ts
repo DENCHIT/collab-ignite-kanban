@@ -357,7 +357,7 @@ export type Database = {
         Returns: boolean
       }
       get_accessible_boards: {
-        Args: Record<PropertyKey, never>
+        Args: Record<PropertyKey, never> | { _user_email?: string }
         Returns: {
           board_id: string
           created_at: string
@@ -386,7 +386,7 @@ export type Database = {
         }[]
       }
       get_manager_activity: {
-        Args: Record<PropertyKey, never>
+        Args: Record<PropertyKey, never> | { _user_email?: string }
         Returns: {
           assigned_at: string
           assistant_count: number

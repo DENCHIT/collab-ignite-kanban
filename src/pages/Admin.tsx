@@ -109,7 +109,9 @@ export default function Admin() {
 
   async function fetchManagers() {
     setLoadingManagers(true);
-    const { data, error } = await supabase.rpc('get_manager_activity');
+    const { data, error } = await supabase.rpc('get_manager_activity', {
+      _user_email: userEmail
+    });
     
     if (error) {
       console.error("Error fetching managers:", error);
@@ -246,7 +248,9 @@ export default function Admin() {
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data, error } = await supabase.rpc('get_accessible_boards');
+    const { data, error } = await supabase.rpc('get_accessible_boards', {
+      _user_email: userEmail
+    });
     
     if (error) {
       toast({ title: "Load boards failed", description: error.message });
