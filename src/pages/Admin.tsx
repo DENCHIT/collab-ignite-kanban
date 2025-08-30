@@ -224,7 +224,7 @@ export default function Admin() {
       return;
     }
     
-    const redirectUrl = `${window.location.origin}/admin`;
+    const redirectUrl = `${window.location.origin}/auth/reset`;
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: redirectUrl
     });
