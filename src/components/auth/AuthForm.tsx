@@ -101,12 +101,9 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
     try {
       try { localStorage.setItem('postAuthRedirect', currentPath); } catch {}
       
-      // Use our custom password reset function
-      const { error } = await supabase.functions.invoke('send-password-reset', {
-        body: { 
-          email: email.trim(),
-          redirectTo: callbackUrl
-        }
+      // Use Supabase's built-in password reset
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/reset`
       });
 
       if (error) throw error;

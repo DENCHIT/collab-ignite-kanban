@@ -29,15 +29,13 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, redirectTo }: PasswordResetRequest = await req.json();
     console.log('Processing password reset for:', email);
 
-    // Generate a secure token for password reset
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-
-    // Store the reset token in a secure way (you might want to create a password_reset_tokens table)
-    // For now, we'll use the built-in Supabase auth flow
-    const { error } = await supabase.auth.admin.generateLink({
+    // Use Supabase built-in password reset flow
+    const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
+      options: {
+        redirectTo: redirectTo || `${Deno.env.get('SUPABASE_URL').replace('supabase.co', 'supabase.app')}/auth/reset`
+      }
     });
 
     if (error) {
@@ -45,8 +43,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw error;
     }
 
-    // Create reset URL
-    const resetUrl = redirectTo || `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify?type=recovery&token=${token}`;
+    // Use the generated recovery link
+    const resetUrl = data.properties?.action_link || redirectTo || `${Deno.env.get('SUPABASE_URL').replace('supabase.co', 'supabase.app')}/auth/reset`;
 
     const emailResponse = await resend.emails.send({
       from: "Zoby Boards <noreply@boards.zoby.ai>",
