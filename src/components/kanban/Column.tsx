@@ -72,54 +72,46 @@ export function Column({
 
   useEffect(() => {
     async function checkBoardRole() {
-      console.log('checkBoardRole called with:', { boardSlug, isUserAdmin });
+      setIsManagerOrAssistant(false);
       
       if (!boardSlug || isUserAdmin) {
-        console.log('Early return - no boardSlug or is admin');
+        setIsManagerOrAssistant(isUserAdmin);
         return;
       }
       
       const userEmail = getUserEmail();
-      console.log('User email from session:', userEmail);
       if (!userEmail) {
-        console.log('No user email found');
         return;
       }
       
-      // Check if user is manager or assistant
-      console.log('Checking manager status...');
-      const { data: managerData, error: managerError } = await supabase.rpc('is_board_manager', {
-        _board_slug: boardSlug,
-        _user_email: userEmail
-      });
-      
-      console.log('Manager check result:', { managerData, managerError });
-      
-      if (!managerError && managerData === true) {
-        console.log('User is manager, setting isManagerOrAssistant to true');
-        setIsManagerOrAssistant(true);
-        return;
-      }
+      try {
+        // Check if user is manager
+        const { data: managerData, error: managerError } = await supabase.rpc('is_board_manager', {
+          _board_slug: boardSlug,
+          _user_email: userEmail
+        });
+        
+        if (!managerError && managerData === true) {
+          setIsManagerOrAssistant(true);
+          return;
+        }
 
-      // Check if user is assistant
-      console.log('Checking assistant status...');
-      const { data: assistantData, error: assistantError } = await supabase.rpc('is_board_assistant', {
-        _board_slug: boardSlug,
-        _user_email: userEmail
-      });
-      
-      console.log('Assistant check result:', { assistantData, assistantError });
-      
-      if (!assistantError && assistantData === true) {
-        console.log('User is assistant, setting isManagerOrAssistant to true');
-        setIsManagerOrAssistant(true);
-      } else {
-        console.log('User is neither manager nor assistant');
+        // Check if user is assistant
+        const { data: assistantData, error: assistantError } = await supabase.rpc('is_board_assistant', {
+          _board_slug: boardSlug,
+          _user_email: userEmail
+        });
+        
+        if (!assistantError && assistantData === true) {
+          setIsManagerOrAssistant(true);
+        }
+      } catch (error) {
+        console.error('Error checking board role:', error);
       }
     }
     
     checkBoardRole();
-  }, [boardSlug, isUserAdmin]);
+  }, [boardSlug, isUserAdmin, userEmail]);
 
   // Fetch board members for assignee functionality
   useEffect(() => {
@@ -162,15 +154,6 @@ export function Column({
   }, [boardSlug]);
 
   const canManageBoard = isUserAdmin || isManagerOrAssistant;
-  
-  // Debug logging
-  console.log('Debug permissions:', {
-    userEmail,
-    isUserAdmin,
-    isManagerOrAssistant,
-    canManageBoard,
-    boardSlug
-  });
 
   const getUserVote = (idea: Idea): number | undefined => {
     const token = getUserToken();
@@ -277,7 +260,7 @@ export function Column({
                           <MoreHorizontal className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-md">
+                      <DropdownMenuContent align="end" className="z-[100] bg-popover border shadow-md min-w-32">
                         {statusOptions
                           .filter(option => option.value !== status)
                           .map(option => (
