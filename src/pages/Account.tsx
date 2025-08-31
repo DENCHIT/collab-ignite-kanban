@@ -363,7 +363,7 @@ export default function Account() {
               <CardTitle>Profile Settings</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <form onSubmit={handleUpdateProfile} className="space-y-4" key="profile-form">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative">
                     <Avatar className="h-24 w-24">
@@ -397,6 +397,7 @@ export default function Account() {
                       className="hidden"
                       id="avatar-upload"
                       disabled={uploading}
+                      data-lpignore="true"
                     />
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
                       <Button 
@@ -425,6 +426,8 @@ export default function Account() {
                     value={profile?.email || user.email || ""} 
                     disabled 
                     className="bg-muted"
+                    data-lpignore="true"
+                    name="user_email"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Email cannot be changed
@@ -439,6 +442,8 @@ export default function Account() {
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter your display name"
                     required
+                    data-lpignore="true"
+                    name="display_name"
                   />
                 </div>
 
@@ -504,7 +509,7 @@ export default function Account() {
             <CardTitle>Change Password</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4" key="change-password-form">
               <div>
                 <Label htmlFor="newPassword">New Password</Label>
                 <Input
@@ -514,6 +519,8 @@ export default function Account() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   minLength={6}
                   required
+                  autoComplete="new-password"
+                  name="new_password"
                 />
               </div>
               <div>
@@ -525,6 +532,8 @@ export default function Account() {
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   minLength={6}
                   required
+                  autoComplete="new-password"
+                  name="confirm_new_password"
                 />
               </div>
               <Button type="submit" className="w-full" disabled={changingPassword}>

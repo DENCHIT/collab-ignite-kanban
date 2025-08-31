@@ -130,7 +130,7 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
         <CardTitle>{isLogin ? "Sign In" : "Create Account"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" key="auth-form">
           <div>
             <Input
               type="email"
@@ -138,6 +138,8 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="username"
+              name="email"
             />
           </div>
           
@@ -148,6 +150,8 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
                 placeholder="Display name (optional)"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                data-lpignore="true"
+                name="display_name"
               />
             </div>
           )}
@@ -160,6 +164,8 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              name={isLogin ? "password" : "new_password"}
             />
           </div>
           

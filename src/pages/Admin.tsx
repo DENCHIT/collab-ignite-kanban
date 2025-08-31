@@ -444,11 +444,25 @@ export default function Admin() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Email</Label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ed@zoby.ai" />
+                    <Input 
+                      type="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      placeholder="ed@zoby.ai"
+                      autoComplete="username"
+                      name="admin_email" 
+                    />
                   </div>
                   <div>
                     <Label>Password</Label>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
+                    <Input 
+                      type="password" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      placeholder="Enter password"
+                      autoComplete="current-password"
+                      name="admin_password" 
+                    />
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -519,15 +533,34 @@ export default function Admin() {
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <Label>Name</Label>
-              <Input value={boardName} onChange={(e) => setBoardName(e.target.value)} placeholder="Client Feedback" />
+              <Input 
+                value={boardName} 
+                onChange={(e) => setBoardName(e.target.value)} 
+                placeholder="Client Feedback"
+                data-lpignore="true"
+                name="board_name" 
+              />
             </div>
             <div>
               <Label>Slug</Label>
-              <Input value={boardSlug} onChange={(e) => setBoardSlug(e.target.value)} placeholder="client-feedback" />
+              <Input 
+                value={boardSlug} 
+                onChange={(e) => setBoardSlug(e.target.value)} 
+                placeholder="client-feedback"
+                data-lpignore="true"
+                name="board_slug" 
+              />
             </div>
             <div>
               <Label>Board passcode</Label>
-              <Input type="password" value={boardPass} onChange={(e) => setBoardPass(e.target.value)} placeholder="Set board passcode" />
+              <Input 
+                type="password" 
+                value={boardPass} 
+                onChange={(e) => setBoardPass(e.target.value)} 
+                placeholder="Set board passcode"
+                autoComplete="new-password"
+                name="board_passcode" 
+              />
             </div>
           </div>
           <div className="space-y-2">

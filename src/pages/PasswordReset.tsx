@@ -143,7 +143,7 @@ export default function PasswordReset() {
           <CardTitle>Set New Password</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePasswordUpdate} className="space-y-4">
+          <form onSubmit={handlePasswordUpdate} className="space-y-4" key="password-reset-form">
             <div>
               <Input
                 type="password"
@@ -152,6 +152,8 @@ export default function PasswordReset() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
+                autoComplete="new-password"
+                name="new_password"
               />
             </div>
             
@@ -163,6 +165,8 @@ export default function PasswordReset() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
+                autoComplete="new-password"
+                name="confirm_password"
               />
             </div>
             

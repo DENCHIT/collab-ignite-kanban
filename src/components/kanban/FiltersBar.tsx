@@ -14,6 +14,8 @@ export function FiltersBar({ value, onChange }: { value: FiltersState; onChange:
   return (
     <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
       <Input
+        data-lpignore="true"
+        name="search_filter"
         placeholder="Search ideas..."
         className="max-w-md"
         value={value.q}

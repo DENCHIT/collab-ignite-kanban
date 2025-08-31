@@ -67,6 +67,13 @@ All colors MUST be HSL.
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Hide LastPass icons if they interfere with layout */
+  .lastpass-icon, 
+  .lastpass-save,
+  div[data-lastpass-icon-root] {
+    display: none !important;
+  }
+
 
 
   .dark {
