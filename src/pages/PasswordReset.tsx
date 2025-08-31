@@ -21,8 +21,19 @@ export default function PasswordReset() {
 
   const checkRecoverySession = async () => {
     try {
+      // Ensure the recovery session is set from the URL hash tokens
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.slice(1));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        }
+      }
+
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         console.error('Session error:', error);
         setIsValidSession(false);

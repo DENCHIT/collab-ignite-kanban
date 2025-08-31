@@ -18,6 +18,19 @@ const queryClient = new QueryClient();
 const AuthHashHandler: React.FC = () => {
   React.useEffect(() => {
     const hash = window.location.hash;
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash.slice(1));
+    const type = params.get('type');
+
+    // If it's a password recovery flow, go directly to /auth/reset and keep the hash
+    if (type === 'recovery') {
+      if (!window.location.pathname.startsWith('/auth/reset')) {
+        window.location.replace(`${window.location.origin}/auth/reset${hash}`);
+      }
+      return;
+    }
+
     if (hash && (hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('type='))) {
       const next = localStorage.getItem('postAuthRedirect') || '/';
       const url = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}${hash}`;
