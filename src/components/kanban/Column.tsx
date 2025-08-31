@@ -92,13 +92,13 @@ export function Column({
     async function checkBoardRole() {
       setIsManagerOrAssistant(false);
       
-      if (!boardSlug || isUserAdmin) {
+      if (!boardSlug || !userEmail) {
         setIsManagerOrAssistant(isUserAdmin);
         return;
       }
-      
-      const userEmail = getUserEmail();
-      if (!userEmail) {
+
+      if (isUserAdmin) {
+        setIsManagerOrAssistant(true);
         return;
       }
       
