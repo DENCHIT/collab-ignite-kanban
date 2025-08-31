@@ -54,6 +54,7 @@ export function Column({
 }) {
   const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [boardMembers, setBoardMembers] = useState<Array<{ email: string; display_name: string }>>([]);
 
   useEffect(() => {
@@ -68,7 +69,24 @@ export function Column({
     };
   }, []);
 
-  const isUserAdmin = userEmail === "ed@zoby.ai";
+  // Check if current user is an admin via role table
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!userEmail) return;
+      try {
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_email: userEmail,
+          _role: 'admin' as any,
+        });
+        if (!error) setIsAdmin(!!data);
+      } catch (e) {
+        console.error('Error checking admin role:', e);
+      }
+    };
+    checkAdmin();
+  }, [userEmail]);
+
+  const isUserAdmin = isAdmin || userEmail === "ed@zoby.ai";
 
   useEffect(() => {
     async function checkBoardRole() {
