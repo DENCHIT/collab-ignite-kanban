@@ -43,6 +43,7 @@ export default function Admin() {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'manager' | null>(null);
+  const [canCreateBoards, setCanCreateBoards] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -97,6 +98,18 @@ export default function Admin() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Determine if user can create boards (admin or has manager role)
+  useEffect(() => {
+    const run = async () => {
+      const adminEmail = userEmail === "ed@zoby.ai";
+      if (!userEmail) { setCanCreateBoards(false); return; }
+      if (adminEmail) { setCanCreateBoards(true); return; }
+      const { data: hasMgr } = await supabase.rpc('has_role', { _user_email: userEmail, _role: 'manager' });
+      setCanCreateBoards(!!hasMgr);
+    };
+    run();
+  }, [userEmail]);
 
   useEffect(() => { 
     if (userEmail && (userEmail === "ed@zoby.ai" || userRole)) { 
@@ -341,9 +354,9 @@ export default function Admin() {
     }
   }
 
-  // Check if user has admin or manager privileges
+  // Privileges
   const isAdmin = userEmail === "ed@zoby.ai";
-  const hasManagerAccess = isAdmin || userRole === 'manager';
+  const hasManagerAccess = canCreateBoards;
 
   async function createBoard() {
     if (!hasManagerAccess) {
