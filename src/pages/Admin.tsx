@@ -525,69 +525,71 @@ export default function Admin() {
       </Card>
 
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Board</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid sm:grid-cols-3 gap-3">
-            <div>
-              <Label>Name</Label>
-              <Input 
-                value={boardName} 
-                onChange={(e) => setBoardName(e.target.value)} 
-                placeholder="Client Feedback"
-                data-lpignore="true"
-                name="board_name" 
-              />
+      {hasManagerAccess && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Board</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <Label>Name</Label>
+                <Input 
+                  value={boardName} 
+                  onChange={(e) => setBoardName(e.target.value)} 
+                  placeholder="Client Feedback"
+                  data-lpignore="true"
+                  name="board_name" 
+                />
+              </div>
+              <div>
+                <Label>Slug</Label>
+                <Input 
+                  value={boardSlug} 
+                  onChange={(e) => setBoardSlug(e.target.value)} 
+                  placeholder="client-feedback"
+                  data-lpignore="true"
+                  name="board_slug" 
+                />
+              </div>
+              <div>
+                <Label>Board passcode</Label>
+                <Input 
+                  type="password" 
+                  value={boardPass} 
+                  onChange={(e) => setBoardPass(e.target.value)} 
+                  placeholder="Set board passcode"
+                  autoComplete="new-password"
+                  name="board_passcode" 
+                />
+              </div>
             </div>
-            <div>
-              <Label>Slug</Label>
-              <Input 
-                value={boardSlug} 
-                onChange={(e) => setBoardSlug(e.target.value)} 
-                placeholder="client-feedback"
-                data-lpignore="true"
-                name="board_slug" 
-              />
+            <div className="space-y-2">
+              <Label>Item Type</Label>
+              <div className="flex items-center gap-3">
+                <Toggle 
+                  pressed={boardItemType === "idea"} 
+                  onPressedChange={(pressed) => setBoardItemType(pressed ? "idea" : "task")}
+                  variant="outline"
+                >
+                  Ideas
+                </Toggle>
+                <Toggle 
+                  pressed={boardItemType === "task"} 
+                  onPressedChange={(pressed) => setBoardItemType(pressed ? "task" : "idea")}
+                  variant="outline"
+                >
+                  Tasks
+                </Toggle>
+                <span className="text-sm text-muted-foreground">
+                  This changes the "New {boardItemType === "idea" ? "Idea" : "Task"}" button text in the board
+                </span>
+              </div>
             </div>
-            <div>
-              <Label>Board passcode</Label>
-              <Input 
-                type="password" 
-                value={boardPass} 
-                onChange={(e) => setBoardPass(e.target.value)} 
-                placeholder="Set board passcode"
-                autoComplete="new-password"
-                name="board_passcode" 
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Item Type</Label>
-            <div className="flex items-center gap-3">
-              <Toggle 
-                pressed={boardItemType === "idea"} 
-                onPressedChange={(pressed) => setBoardItemType(pressed ? "idea" : "task")}
-                variant="outline"
-              >
-                Ideas
-              </Toggle>
-              <Toggle 
-                pressed={boardItemType === "task"} 
-                onPressedChange={(pressed) => setBoardItemType(pressed ? "task" : "idea")}
-                variant="outline"
-              >
-                Tasks
-              </Toggle>
-              <span className="text-sm text-muted-foreground">
-                This changes the "New {boardItemType === "idea" ? "Idea" : "Task"}" button text in the board
-              </span>
-            </div>
-          </div>
-          <Button onClick={createBoard}>Create board</Button>
-        </CardContent>
-      </Card>
+            <Button onClick={createBoard}>Create board</Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
