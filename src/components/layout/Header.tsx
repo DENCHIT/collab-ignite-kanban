@@ -39,10 +39,14 @@ export default function Header() {
 
   const loadProfile = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name, email')
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
         
       if (!error && data) {
         setProfile(data);

@@ -117,7 +117,8 @@ export default function BoardPage() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('display_name')
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
       // Add user to board
       const { data: addResult, error: addError } = await supabase.rpc('add_board_member', {
