@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useSessionReady } from "@/hooks/useSessionReady";
 
 interface Profile {
   display_name: string;
@@ -9,49 +9,39 @@ interface Profile {
 }
 
 export default function Header() {
-  const [user, setUser] = useState<User | null>(null);
+  const { ready, user } = useSessionReady();
   const [profile, setProfile] = useState<Profile | null>(null);
   const location = useLocation();
 
+  // Load profile when user changes, but defer the call
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
+    if (!ready) return;
+    
+    if (user) {
+      // Defer to avoid auth callback deadlock
+      setTimeout(() => {
         loadProfile();
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          loadProfile();
-        } else {
-          setProfile(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+      }, 0);
+    } else {
+      setProfile(null);
+    }
+  }, [ready, user]);
 
   const loadProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!user) return;
 
+    try {
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name, email')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .maybeSingle()
+        .throwOnError();
         
-      if (!error && data) {
+      if (data) {
         setProfile(data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to load profile:', error);
     }
   };

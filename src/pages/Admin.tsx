@@ -8,6 +8,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { useSessionReady } from "@/hooks/useSessionReady";
 import { loadIdeas, loadThresholds, saveThresholds } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,9 +40,9 @@ interface ManagerActivity {
 }
 
 export default function Admin() {
+  const { ready, session, userEmail } = useSessionReady();
   const [thresholds, setThresholds] = useState<Thresholds>(loadThresholds({ toDiscussion: 5, toProduction: 10, toBacklog: 5 }));
-
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
   const [userRole, setUserRole] = useState<'admin' | 'manager' | null>(null);
   const [canCreateBoards, setCanCreateBoards] = useState(false);
   const [email, setEmail] = useState("");
@@ -69,68 +70,79 @@ export default function Admin() {
   const [showAddManager, setShowAddManager] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const email = session?.user?.email ?? null;
-      setUserEmail(email);
-      
-      if (email) {
-        // Check user role after setting email
-        const { data: roleData } = await supabase.rpc('get_user_role', { _user_email: email });
-        setUserRole(roleData);
-      } else {
+    document.title = "Admin Panel — Kanban Boards";
+  }, []);
+
+  // Fetch user role when session is ready
+  useEffect(() => {
+    if (!ready || !userEmail) {
+      setUserRole(null);
+      return;
+    }
+
+    // Defer the Supabase call to avoid auth callback deadlock
+    setTimeout(async () => {
+      try {
+        const { data } = await supabase.rpc('get_user_role', { _user_email: userEmail });
+        setUserRole(data);
+      } catch (error) {
+        console.error('Error fetching user role:', error);
         setUserRole(null);
       }
-    });
-    
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const email = session?.user?.email ?? null;
-      setUserEmail(email);
-      
-      if (email) {
-        // Check user role
-        const { data: roleData } = await supabase.rpc('get_user_role', { _user_email: email });
-        setUserRole(roleData);
-      }
-    });
-    
-    document.title = "Admin Panel — Kanban Boards";
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    }, 0);
+  }, [ready, userEmail]);
 
   // Determine if user can create boards (admin or has manager role)
   useEffect(() => {
-    const run = async () => {
-      const adminEmail = userEmail === "ed@zoby.ai";
-      if (!userEmail) { setCanCreateBoards(false); return; }
-      if (adminEmail) { setCanCreateBoards(true); return; }
-      const { data: hasMgr } = await supabase.rpc('has_role', { _user_email: userEmail, _role: 'manager' });
-      setCanCreateBoards(!!hasMgr);
-    };
-    run();
-  }, [userEmail]);
+    if (!ready || !userEmail) {
+      setCanCreateBoards(false);
+      return;
+    }
 
+    const adminEmail = userEmail === "ed@zoby.ai";
+    if (adminEmail) {
+      setCanCreateBoards(true);
+      return;
+    }
+
+    // Defer the Supabase call to avoid auth callback deadlock
+    setTimeout(async () => {
+      try {
+        const { data } = await supabase.rpc('has_role', { _user_email: userEmail, _role: 'manager' });
+        setCanCreateBoards(!!data);
+      } catch (error) {
+        console.error('Error checking manager role:', error);
+        setCanCreateBoards(false);
+      }
+    }, 0);
+  }, [ready, userEmail]);
+
+  // Fetch data when session is ready and user is authenticated
   useEffect(() => { 
-    if (userEmail && (userEmail === "ed@zoby.ai" || userRole)) { 
+    if (!ready || !userEmail || (!userRole && userEmail !== "ed@zoby.ai")) {
+      return;
+    }
+    
+    // Defer data fetching to avoid auth callback conflicts
+    setTimeout(() => {
       fetchBoards(); 
       if (userEmail === "ed@zoby.ai") {
         fetchManagers();
       }
-    } 
-  }, [userEmail, userRole]);
+    }, 0);
+  }, [ready, userEmail, userRole]);
 
   async function fetchManagers() {
     setLoadingManagers(true);
-    const { data, error } = await supabase.rpc('get_manager_activity', {
-      _user_email: userEmail
-    });
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc('get_manager_activity', {
+        _user_email: userEmail
+      }).throwOnError();
+      
+      setManagers(data || []);
+    } catch (error: any) {
       console.error("Error fetching managers:", error);
       toast({ title: "Load managers failed", description: error.message });
-    } else {
-      setManagers(data || []);
     }
     setLoadingManagers(false);
   }
@@ -256,22 +268,20 @@ export default function Admin() {
 
   async function signOutAdmin() {
     await supabase.auth.signOut();
-    setUserEmail(null);
   }
 
   async function fetchBoards() {
     setLoadingBoards(true);
-    const { data, error } = await supabase.rpc('get_accessible_boards', {
-      _user_email: userEmail
-    });
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc('get_accessible_boards', {
+        _user_email: userEmail
+      }).throwOnError();
+      
+      setBoards(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error fetching boards:", error);
       toast({ title: "Load boards failed", description: error.message });
-      setLoadingBoards(false);
-      return;
     }
-
-    setBoards(Array.isArray(data) ? data : []);
     setLoadingBoards(false);
   }
 
@@ -440,6 +450,14 @@ export default function Admin() {
     }).catch(() => {
       toast({ title: "Copy failed", description: "Could not copy to clipboard" });
     });
+  }
+
+  if (!ready) {
+    return (
+      <main className="container mx-auto py-6">
+        <div className="text-center">Loading...</div>
+      </main>
+    );
   }
 
   if (!userEmail || (!isAdmin && !userRole)) {
