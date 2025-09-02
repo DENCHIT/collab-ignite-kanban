@@ -63,6 +63,12 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   const currentUserEmail = getCurrentUserEmail();
   const isWatching = localIdea.watchers?.includes(currentUserEmail) || false;
 
+  // Helper function to get display name from email
+  const getDisplayName = (email: string) => {
+    const member = boardMembers.find(m => m.email === email);
+    return member?.display_name || email.split('@')[0]; // Fallback to email prefix
+  };
+
   // Fetch board members for mentions
   useEffect(() => {
     const fetchBoardMembers = async () => {
@@ -526,7 +532,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
               <div className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2 flex items-center justify-between">
                 <span>
                   Replying to <span className="font-medium">
-                    {localIdea.comments.find(c => c.id === replyTo)?.user}
+                    {getDisplayName(localIdea.comments.find(c => c.id === replyTo)?.user || '')}
                   </span>
                 </span>
                 <Button
@@ -608,19 +614,19 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                     {/* Replied to indicator */}
                     {repliedComment && (
                       <div className="ml-4 mb-1 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 border-l-2 border-muted">
-                        Replying to <span className="font-medium">{repliedComment.user}</span>: {repliedComment.text.slice(0, 50)}{repliedComment.text.length > 50 ? '...' : ''}
+                        Replying to <span className="font-medium">{getDisplayName(repliedComment.user)}</span>: {repliedComment.text.slice(0, 50)}{repliedComment.text.length > 50 ? '...' : ''}
                       </div>
                     )}
                     
                     {/* Activity Entry */}
                     <div className="flex gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium text-primary">{entry.user.charAt(0).toUpperCase()}</span>
+                        <span className="text-xs font-medium text-primary">{getDisplayName(entry.user).charAt(0).toUpperCase()}</span>
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">{entry.user}</span>
+                          <span className="text-sm font-medium">{getDisplayName(entry.user)}</span>
                           <span className="text-xs text-muted-foreground">
                             {'isCreation' in entry ? 'created' : 'commented'} • {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                           </span>
