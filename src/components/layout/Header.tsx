@@ -76,7 +76,12 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center gap-3">
-        <Link to="/" className="font-semibold tracking-tight">
+        <Link to="/" className="font-semibold tracking-tight flex items-center gap-2">
+          <img 
+            src="/lovable-uploads/044637ee-7265-40a1-b815-97ac2c574495.png" 
+            alt="Zoby Boards" 
+            className="w-6 h-6"
+          />
           Zoby Boards
         </Link>
         <nav className="ml-4 hidden md:flex gap-2 text-sm text-muted-foreground">
