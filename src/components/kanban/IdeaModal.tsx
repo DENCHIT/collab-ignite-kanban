@@ -614,7 +614,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                     {/* Replied to indicator */}
                     {repliedComment && (
                       <div className="ml-4 mb-1 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 border-l-2 border-muted">
-                        Replying to <span className="font-medium">{getDisplayName(repliedComment.user)}</span>: {repliedComment.text.slice(0, 50)}{repliedComment.text.length > 50 ? '...' : ''}
+                        Replying to <span className="font-medium">{getDisplayNameFromEmail(repliedComment.user)}</span>: {repliedComment.text.slice(0, 50)}{repliedComment.text.length > 50 ? '...' : ''}
                       </div>
                     )}
                     
@@ -626,7 +626,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">{getDisplayName(entry.user)}</span>
+                          <span className="text-sm font-medium">{getDisplayNameFromEmail(entry.user)}</span>
                           <span className="text-xs text-muted-foreground">
                             {'isCreation' in entry ? 'created' : 'commented'} • {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                           </span>
