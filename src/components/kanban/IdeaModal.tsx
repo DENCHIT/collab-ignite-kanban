@@ -626,7 +626,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">{getDisplayNameFromEmail(entry.user)}</span>
+                          <span className="text-sm font-medium">{getDisplayName(entry.user)}</span>
                           <span className="text-xs text-muted-foreground">
                             {'isCreation' in entry ? 'created' : 'commented'} • {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                           </span>
