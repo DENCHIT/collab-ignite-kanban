@@ -72,15 +72,43 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   };
 
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('anonymous@example.com');
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isBoardManager, setIsBoardManager] = useState<boolean>(false);
 
-  // Initialize current user email
+  // Initialize current user email and roles
   useEffect(() => {
     const initCurrentUser = async () => {
       const email = await getCurrentUserEmail();
       setCurrentUserEmail(email);
+      
+      // Check if user is admin
+      if (email !== 'anonymous@example.com') {
+        try {
+          const { data: userRoles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('email', email);
+          
+          setIsAdmin(userRoles?.some(r => r.role === 'admin') || false);
+          
+          // Check if user is board manager/assistant
+          if (boardId) {
+            const { data: boardMember } = await supabase
+              .from('board_members')
+              .select('role')
+              .eq('board_id', boardId)
+              .eq('email', email)
+              .single();
+            
+            setIsBoardManager(['manager', 'assistant'].includes(boardMember?.role));
+          }
+        } catch (error) {
+          console.log('Error fetching user roles:', error);
+        }
+      }
     };
     initCurrentUser();
-  }, []);
+  }, [boardId]);
   const isWatching = localIdea.watchers?.includes(currentUserEmail) || false;
 
   // Helper function to get display name from email
@@ -725,7 +753,7 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                                 <Reply className="h-3 w-3 mr-1" />
                                 Reply
                               </Button>
-                              {entry.user === currentUserEmail && (
+                              {(entry.user === currentUserEmail || isAdmin || isBoardManager) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
