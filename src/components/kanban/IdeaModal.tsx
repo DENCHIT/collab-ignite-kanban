@@ -47,7 +47,18 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
   }, [idea]);
 
   // Get current user email from session
-  const getCurrentUserEmail = () => {
+  const getCurrentUserEmail = async () => {
+    // Try Supabase auth first
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        return user.email;
+      }
+    } catch (error) {
+      console.log('Auth error:', error);
+    }
+    
+    // Fallback to session storage 
     const userSession = localStorage.getItem('user_session');
     if (userSession) {
       try {
@@ -60,7 +71,16 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
     return 'anonymous@example.com';
   };
 
-  const currentUserEmail = getCurrentUserEmail();
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('anonymous@example.com');
+
+  // Initialize current user email
+  useEffect(() => {
+    const initCurrentUser = async () => {
+      const email = await getCurrentUserEmail();
+      setCurrentUserEmail(email);
+    };
+    initCurrentUser();
+  }, []);
   const isWatching = localIdea.watchers?.includes(currentUserEmail) || false;
 
   // Helper function to get display name from email
