@@ -65,8 +65,29 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
 
   // Helper function to get display name from email
   const getDisplayName = (email: string) => {
+    // First check if it's the current user and get their session display name
+    if (email === currentUserEmail) {
+      const userSession = localStorage.getItem('user_session');
+      if (userSession) {
+        try {
+          const session = JSON.parse(userSession);
+          if (session.display_name) {
+            return session.display_name;
+          }
+        } catch {
+          // Fall through to other methods
+        }
+      }
+    }
+    
+    // Then check board members
     const member = boardMembers.find(m => m.email === email);
-    return member?.display_name || email.split('@')[0]; // Fallback to email prefix
+    if (member?.display_name) {
+      return member.display_name;
+    }
+    
+    // Finally fall back to email prefix
+    return email.split('@')[0];
   };
 
   // Fetch board members for mentions
