@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Idea, IdeaComment, IdeaCommentAttachment, IdeaChecklistItem } from "@/types/idea";
-import { Clock, Reply, Paperclip, CheckSquare, Users } from "lucide-react";
+import { Clock, Reply, Paperclip, CheckSquare, Users, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface IdeaModalProps {
@@ -287,6 +287,49 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
       toast({
         title: "Error",
         description: "Failed to update reaction",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const updatedComments = localIdea.comments.filter(c => c.id !== commentId);
+      
+      const updatedIdea = {
+        ...localIdea,
+        comments: updatedComments,
+        lastActivityAt: new Date().toISOString(),
+      };
+
+      // Update local state immediately
+      setLocalIdea(updatedIdea);
+
+      // Update in database
+      const { error } = await supabase
+        .from('ideas')
+        .update({ 
+          comments: JSON.parse(JSON.stringify(updatedComments)),
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', localIdea.id);
+
+      if (error) {
+        // Revert local state on error
+        setLocalIdea(localIdea);
+        throw error;
+      }
+
+      onUpdate(updatedIdea);
+      toast({
+        title: "Comment deleted",
+        description: "Your comment has been deleted",
+      });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete comment",
         variant: "destructive",
       });
     }
@@ -672,15 +715,27 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                             {'isCreation' in entry ? 'created' : 'commented'} • {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                           </span>
                           {!('isCreation' in entry) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => setReplyTo(entry.id)}
-                            >
-                              <Reply className="h-3 w-3 mr-1" />
-                              Reply
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => setReplyTo(entry.id)}
+                              >
+                                <Reply className="h-3 w-3 mr-1" />
+                                Reply
+                              </Button>
+                              {entry.user === currentUserEmail && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteComment(entry.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </>
                           )}
                         </div>
                         
