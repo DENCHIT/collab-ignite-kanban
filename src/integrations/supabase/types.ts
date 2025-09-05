@@ -101,7 +101,6 @@ export type Database = {
           created_at: string
           id: string
           passcode_hash: string
-          passcode_plain: string | null
           salt: string
           updated_at: string
         }
@@ -110,7 +109,6 @@ export type Database = {
           created_at?: string
           id?: string
           passcode_hash: string
-          passcode_plain?: string | null
           salt?: string
           updated_at?: string
         }
@@ -119,7 +117,6 @@ export type Database = {
           created_at?: string
           id?: string
           passcode_hash?: string
-          passcode_plain?: string | null
           salt?: string
           updated_at?: string
         }
@@ -355,6 +352,47 @@ export type Database = {
       add_board_member: {
         Args: { _display_name: string; _email: string; _slug: string }
         Returns: boolean
+      }
+      get_accessible_boards: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          board_id: string
+          created_at: string
+          created_by_email: string
+          idea_count: number
+          item_type: string
+          member_count: number
+          name: string
+          slug: string
+          vote_count: number
+        }[]
+      }
+      get_boards_admin_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          board_id: string
+          created_at: string
+          idea_count: number
+          item_type: string
+          member_count: number
+          name: string
+          slug: string
+          vote_count: number
+        }[]
+      }
+      get_manager_activity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          assigned_at: string
+          assistant_count: number
+          boards_created: number
+          display_name: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          total_ideas: number
+          total_members: number
+          total_votes: number
+        }[]
       }
       get_my_boards: {
         Args: Record<PropertyKey, never>

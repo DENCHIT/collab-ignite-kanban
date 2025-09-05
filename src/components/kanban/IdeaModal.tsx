@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Idea, IdeaComment, IdeaCommentAttachment, IdeaChecklistItem } from "@/types/idea";
 import { Clock, Reply, Paperclip, CheckSquare, Users, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import DOMPurify from 'dompurify';
 
 interface IdeaModalProps {
   idea: Idea;
@@ -775,7 +776,12 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                           <div className="bg-background rounded-lg px-3 py-2 border">
                             <div 
                               className="text-sm prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{ __html: entry.content || entry.text }}
+                              dangerouslySetInnerHTML={{ 
+                                __html: DOMPurify.sanitize(entry.content || entry.text, {
+                                  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br'],
+                                  ALLOWED_ATTR: []
+                                })
+                              }}
                             />
                             
                             {/* Reactions */}

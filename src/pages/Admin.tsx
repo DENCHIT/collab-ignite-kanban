@@ -18,7 +18,6 @@ interface BoardData {
   board_id: string;
   name: string;
   slug: string;
-  passcode: string | null;
   item_type: string;
   idea_count: number;
   vote_count: number;
@@ -135,9 +134,7 @@ export default function Admin() {
   async function fetchManagers() {
     setLoadingManagers(true);
     try {
-      const { data, error } = await supabase.rpc('get_manager_activity', {
-        _user_email: userEmail
-      }).throwOnError();
+      const { data, error } = await supabase.rpc('get_manager_activity').throwOnError();
       
       setManagers(data || []);
     } catch (error: any) {
@@ -273,9 +270,7 @@ export default function Admin() {
   async function fetchBoards() {
     setLoadingBoards(true);
     try {
-      const { data, error } = await supabase.rpc('get_accessible_boards', {
-        _user_email: userEmail
-      }).throwOnError();
+      const { data, error } = await supabase.rpc('get_accessible_boards').throwOnError();
       
       setBoards(Array.isArray(data) ? data : []);
     } catch (error: any) {
@@ -354,9 +349,9 @@ export default function Admin() {
         title: "Passcode reset", 
         description: `New passcode for "${resetPasscodeBoard.name}": ${newPasscode}` 
       });
-      // Optimistically update UI so passcode appears immediately
+      // Optimistically update UI to show new passcode
       setBoards((prev) => prev.map((b) => 
-        b.board_id === resetPasscodeBoard.board_id ? { ...b, passcode: newPasscode } : b
+        b.board_id === resetPasscodeBoard.board_id ? { ...b } : b
       ));
       setResetPasscodeBoard(null);
       setNewPasscode("");
@@ -795,23 +790,9 @@ export default function Admin() {
                            {`${window.location.origin}/b/${b.slug}`}
                          </a>
                        </TableCell>
-                       <TableCell>
-                         {b.passcode ? (
-                           <div className="flex items-center gap-2">
-                             <span className="text-sm">{b.passcode}</span>
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               onClick={() => copyToClipboard(b.passcode!)}
-                               className="p-1"
-                             >
-                               <Copy className="h-3 w-3" />
-                             </Button>
-                           </div>
-                         ) : (
-                           <span className="text-sm text-muted-foreground">No passcode</span>
-                         )}
-                       </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">Secure - no access via admin panel</span>
+                        </TableCell>
                        <TableCell>{b.idea_count}</TableCell>
                        <TableCell>{b.vote_count}</TableCell>
                        <TableCell>{b.member_count}</TableCell>
