@@ -557,13 +557,25 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         }}>New {boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1)}</Button>
       </div>
       <FiltersBar value={filters} onChange={setFilters} />
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <Column title="Backlog" status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
-        <Column title="In discussion" status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
-        <Column title="In production" status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
-        <Column title="In review" status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
-        <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
-        <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-200px)]">
+        <div className="flex-none w-80">
+          <Column title="Backlog" status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
+        <div className="flex-none w-80">
+          <Column title="In discussion" status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
+        <div className="flex-none w-80">
+          <Column title="In production" status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
+        <div className="flex-none w-80">
+          <Column title="In review" status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
+        <div className="flex-none w-80">
+          <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
+        <div className="flex-none w-80">
+          <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+        </div>
       </div>
       {activeIdea && <IdeaModal 
         idea={activeIdea} 
