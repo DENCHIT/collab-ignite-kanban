@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { toast } from "@/hooks/use-toast";
 import { useSessionReady } from "@/hooks/useSessionReady";
 import { loadIdeas, loadThresholds, saveThresholds } from "@/lib/session";
 import { Idea, Thresholds } from "@/types/idea";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Trash2, ExternalLink } from "lucide-react";
 
 interface BoardData {
   board_id: string;
@@ -757,80 +758,154 @@ export default function Admin() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Boards</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingBoards ? (
-            <div className="text-sm text-muted-foreground">Loading boards...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableCaption>All boards</TableCaption>
-                 <TableHeader>
-                   <TableRow>
-                     <TableHead>Name</TableHead>
-                     <TableHead>Slug</TableHead>
-                     <TableHead>Link</TableHead>
-                     <TableHead>Passcode</TableHead>
-                     <TableHead>Ideas</TableHead>
-                     <TableHead>Votes</TableHead>
-                     <TableHead>Members</TableHead>
-                     <TableHead>Actions</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {boards.map((b) => (
-                     <TableRow key={b.board_id}>
-                       <TableCell className="font-medium">{b.name}</TableCell>
-                       <TableCell>{b.slug}</TableCell>
-                      <TableCell>
-                         <a href={`/b/${b.slug}`} className="underline" target="_blank" rel="noreferrer">
-                           {`${window.location.origin}/b/${b.slug}`}
-                         </a>
-                       </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">Secure - no access via admin panel</span>
-                        </TableCell>
-                       <TableCell>{b.idea_count}</TableCell>
-                       <TableCell>{b.vote_count}</TableCell>
-                       <TableCell>{b.member_count}</TableCell>
-                       <TableCell>
-                         <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedBoard(b);
-                                fetchBoardMembers(b.board_id);
-                              }}
-                            >
-                              Manage
-                            </Button>
-                           <Button 
-                             size="sm" 
-                             variant="outline"
-                             onClick={() => setResetPasscodeBoard(b)}
-                           >
-                             Reset Passcode
-                           </Button>
-                           <Button 
-                             size="sm" 
-                             variant="destructive"
-                             onClick={() => setDeleteBoard(b)}
-                           >
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                 </TableBody>
-              </Table>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Boards</h2>
+          {boards.length > 1 && (
+            <div className="text-sm text-muted-foreground">
+              {boards.length} boards • Use arrows to navigate
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        {loadingBoards ? (
+          <Card className="h-[500px]">
+            <CardContent className="flex items-center justify-center h-full">
+              <div className="text-sm text-muted-foreground">Loading boards...</div>
+            </CardContent>
+          </Card>
+        ) : boards.length === 0 ? (
+          <Card className="h-[500px]">
+            <CardContent className="flex items-center justify-center h-full">
+              <div className="text-center space-y-2">
+                <div className="text-sm text-muted-foreground">No boards found</div>
+                <div className="text-xs text-muted-foreground">Create your first board above</div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Carousel className="w-full">
+            <CarouselContent>
+              {boards.map((board) => (
+                <CarouselItem key={board.board_id}>
+                  <Card className="h-[500px]">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <CardTitle className="text-2xl">{board.name}</CardTitle>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Badge variant="outline">{board.slug}</Badge>
+                            <Badge variant="secondary">{board.item_type}</Badge>
+                          </div>
+                        </div>
+                        <a 
+                          href={`/b/${board.slug}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-sm text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Open
+                        </a>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-6 h-full pb-6">
+                      {/* Statistics */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-primary">{board.idea_count}</div>
+                          <div className="text-xs text-muted-foreground">Ideas</div>
+                        </div>
+                        <div className="text-center p-4 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-primary">{board.vote_count}</div>
+                          <div className="text-xs text-muted-foreground">Votes</div>
+                        </div>
+                        <div className="text-center p-4 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold text-primary">{board.member_count}</div>
+                          <div className="text-xs text-muted-foreground">Members</div>
+                        </div>
+                      </div>
+
+                      {/* Board Link */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Board Link</Label>
+                        <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+                          <code className="flex-1 text-sm break-all">
+                            {`${window.location.origin}/b/${board.slug}`}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/b/${board.slug}`);
+                              toast({ title: "Copied", description: "Board link copied to clipboard" });
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Security Info */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Security</Label>
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <div className="text-sm text-muted-foreground">
+                            Passcode is securely encrypted and not accessible via admin panel
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-3 pt-4">
+                        <Button 
+                          onClick={() => {
+                            setSelectedBoard(board);
+                            fetchBoardMembers(board.board_id);
+                          }}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          Manage Members
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => setResetPasscodeBoard(board)}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          Reset Passcode
+                        </Button>
+                        <Button 
+                          variant="destructive"
+                          onClick={() => setDeleteBoard(board)}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Board
+                        </Button>
+                      </div>
+
+                      {/* Board Info */}
+                      <div className="pt-4 border-t">
+                        <div className="text-xs text-muted-foreground">
+                          Created {new Date(board.created_at).toLocaleDateString()}
+                          {board.created_by_email && ` by ${board.created_by_email}`}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            {boards.length > 1 && (
+              <>
+                <CarouselPrevious className="left-4" />
+                <CarouselNext className="right-4" />
+              </>
+            )}
+          </Carousel>
+        )}
+      </div>
 
       {selectedBoard && (
         <Card>
