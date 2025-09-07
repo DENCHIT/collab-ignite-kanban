@@ -246,12 +246,12 @@ export function Column({
   };
 
   return (
-    <div className="flex flex-col rounded-lg bg-card border" aria-label={`${title} column`}>
+    <div className="flex flex-col h-full rounded-lg bg-card border" aria-label={`${title} column`}>
       <div className="px-3 py-2 border-b flex items-center justify-between">
         <div className="text-sm font-medium">{title}</div>
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
-      <ScrollArea className="h-80 p-2">
+      <ScrollArea className="flex-1 p-2">
         <div className="space-y-2">
           {ideas.map((idea) => (
             <Card 

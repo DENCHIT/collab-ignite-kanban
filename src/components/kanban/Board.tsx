@@ -557,23 +557,23 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         }}>New {boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1)}</Button>
       </div>
       <FiltersBar value={filters} onChange={setFilters} />
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-200px)]">
-        <div className="flex-none w-80">
+      <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
+        <div className="flex-none w-80 h-full">
           <Column title="Backlog" status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
-        <div className="flex-none w-80">
+        <div className="flex-none w-80 h-full">
           <Column title="In discussion" status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
-        <div className="flex-none w-80">
+        <div className="flex-none w-80 h-full">
           <Column title="In production" status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
-        <div className="flex-none w-80">
+        <div className="flex-none w-80 h-full">
           <Column title="In review" status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
-        <div className="flex-none w-80">
+        <div className="flex-none w-80 h-full">
           <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
-        <div className="flex-none w-80">
+        <div className="flex-none w-80 h-full">
           <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
         </div>
       </div>
