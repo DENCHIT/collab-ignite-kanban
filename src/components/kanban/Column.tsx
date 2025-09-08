@@ -391,7 +391,7 @@ export function Column({
                     onClick={() => onVote(idea.id, 1)}
                   >
                     <ChevronUp className="h-3 w-3 mr-1" />
-                    {getUserVote(idea) === 1 ? "Upvoted" : "Up"}
+                    {getUserVote(idea) === 1 ? "Voted" : "Up"}
                   </Button>
                   <Button 
                     size="sm" 
@@ -402,14 +402,14 @@ export function Column({
                     onClick={() => onVote(idea.id, -1)}
                   >
                     <ChevronDown className="h-3 w-3 mr-1" />
-                    {getUserVote(idea) === -1 ? "Downvoted" : "Down"}
+                    {getUserVote(idea) === -1 ? "Voted" : "Down"}
                   </Button>
                   <Button 
                     size="sm" 
                     className="flex-1 sm:flex-none" 
                     onClick={() => onOpen(idea)}
                   >
-                    Details
+                    Open
                   </Button>
                 </div>
                 
