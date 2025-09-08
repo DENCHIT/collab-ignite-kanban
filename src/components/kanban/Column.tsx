@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 const statusClass: Record<IdeaStatus, string> = {
   backlog: "border-l-4 border-l-muted",
   discussion: "border-l-4 border-l-accent",
-  production: "border-l-4 border-l-primary",
+  production: "border-l-4 border-l-primary", 
   review: "border-l-4 border-l-ring",
   roadblock: "border-l-4 border-l-destructive",
   done: "border-l-4 border-l-primary",
@@ -391,7 +391,7 @@ export function Column({
                     onClick={() => onVote(idea.id, 1)}
                   >
                     <ChevronUp className="h-3 w-3 mr-1" />
-                    {getUserVote(idea) === 1 ? "Upvoted" : "Upvote"}
+                    {getUserVote(idea) === 1 ? "Upvoted" : "Up"}
                   </Button>
                   <Button 
                     size="sm" 
@@ -402,7 +402,7 @@ export function Column({
                     onClick={() => onVote(idea.id, -1)}
                   >
                     <ChevronDown className="h-3 w-3 mr-1" />
-                    {getUserVote(idea) === -1 ? "Downvoted" : "Downvote"}
+                    {getUserVote(idea) === -1 ? "Downvoted" : "Down"}
                   </Button>
                   <Button 
                     size="sm" 
