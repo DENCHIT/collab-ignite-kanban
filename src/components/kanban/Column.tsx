@@ -7,7 +7,8 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { QuickChecklist } from "@/components/ui/quick-checklist";
 import { AssigneeSelector } from "@/components/ui/assignee-selector";
 import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
-import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X } from "lucide-react";
 import { Idea, IdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -22,13 +23,13 @@ const statusClass: Record<IdeaStatus, string> = {
   done: "border-l-4 border-l-primary",
 };
 
-const statusOptions: { value: IdeaStatus; label: string }[] = [
-  { value: "backlog", label: "Backlog" },
-  { value: "discussion", label: "Discussion" },
-  { value: "production", label: "Production" },
-  { value: "review", label: "Review" },
-  { value: "roadblock", label: "Roadblock" },
-  { value: "done", label: "Done" },
+const getStatusOptions = (columnNames?: Record<IdeaStatus, string>): { value: IdeaStatus; label: string }[] => [
+  { value: "backlog", label: columnNames?.backlog || "Backlog" },
+  { value: "discussion", label: columnNames?.discussion || "Discussion" },
+  { value: "production", label: columnNames?.production || "Production" },
+  { value: "review", label: columnNames?.review || "Review" },
+  { value: "roadblock", label: columnNames?.roadblock || "Roadblock" },
+  { value: "done", label: columnNames?.done || "Done" },
 ];
 
 export function Column({
@@ -41,6 +42,8 @@ export function Column({
   onDelete,
   boardSlug,
   onUpdateIdea,
+  onUpdateColumnName,
+  columnNames,
 }: {
   title: string;
   status: IdeaStatus;
@@ -51,11 +54,15 @@ export function Column({
   onDelete: (id: string) => void;
   boardSlug?: string;
   onUpdateIdea?: (updatedIdea: Idea) => void;
+  onUpdateColumnName?: (status: IdeaStatus, newName: string) => void;
+  columnNames?: Record<IdeaStatus, string>;
 }) {
   const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [boardMembers, setBoardMembers] = useState<Array<{ email: string; display_name: string }>>([]);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState(title);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -248,7 +255,64 @@ export function Column({
   return (
     <div className="flex flex-col h-full rounded-lg bg-card border" aria-label={`${title} column`}>
       <div className="px-3 py-2 border-b flex items-center justify-between">
-        <div className="text-sm font-medium">{title}</div>
+        {isEditingTitle ? (
+          <div className="flex items-center gap-2 flex-1">
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="text-sm h-6 flex-1"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onUpdateColumnName?.(status, editTitle);
+                  setIsEditingTitle(false);
+                } else if (e.key === 'Escape') {
+                  setEditTitle(title);
+                  setIsEditingTitle(false);
+                }
+              }}
+              onBlur={() => {
+                onUpdateColumnName?.(status, editTitle);
+                setIsEditingTitle(false);
+              }}
+              autoFocus
+            />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => {
+                onUpdateColumnName?.(status, editTitle);
+                setIsEditingTitle(false);
+              }}
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => {
+                setEditTitle(title);
+                setIsEditingTitle(false);
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div 
+            className="text-sm font-medium flex items-center gap-2 cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded"
+            onClick={() => {
+              if (onUpdateColumnName) {
+                setIsEditingTitle(true);
+                setEditTitle(title);
+              }
+            }}
+          >
+            {title}
+            {onUpdateColumnName && <Edit2 className="h-3 w-3 opacity-50" />}
+          </div>
+        )}
         <Badge variant="secondary">{ideas.length}</Badge>
       </div>
       <ScrollArea className="flex-1 p-2">
@@ -279,7 +343,7 @@ export function Column({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="z-[100] bg-popover border shadow-md min-w-32">
-                        {statusOptions
+                        {getStatusOptions(columnNames)
                           .filter(option => option.value !== status)
                           .map(option => (
                             <DropdownMenuItem

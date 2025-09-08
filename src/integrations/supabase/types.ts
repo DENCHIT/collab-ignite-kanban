@@ -64,6 +64,7 @@ export type Database = {
       }
       boards: {
         Row: {
+          column_names: Json | null
           created_at: string
           created_by: string | null
           created_by_email: string | null
@@ -74,6 +75,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          column_names?: Json | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null
@@ -84,6 +86,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          column_names?: Json | null
           created_at?: string
           created_by?: string | null
           created_by_email?: string | null

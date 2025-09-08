@@ -62,6 +62,14 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   const [boardId, setBoardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [columnNames, setColumnNames] = useState<Record<IdeaStatus, string>>({
+    backlog: "Backlog",
+    discussion: "In discussion", 
+    production: "In production",
+    review: "In review",
+    roadblock: "Roadblock",
+    done: "Done"
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -106,7 +114,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         // Get board ID from slug
         const { data: board, error: boardError } = await supabase
           .from('boards')
-          .select('id, name, item_type')
+          .select('id, name, item_type, column_names')
           .eq('slug', boardSlug)
           .single();
 
@@ -121,6 +129,11 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         setBoardId(board.id);
         setBoardName(board.name || 'Team Ideas Board');
         setBoardItemType(board.item_type || 'idea');
+        
+        // Set column names if they exist
+        if (board.column_names) {
+          setColumnNames(board.column_names as Record<IdeaStatus, string>);
+        }
 
         // Load ideas for this board
         const { data: ideasData, error: ideasError } = await supabase
@@ -533,6 +546,30 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     }
   };
 
+  const updateColumnName = async (status: IdeaStatus, newName: string) => {
+    if (!boardId) return;
+
+    try {
+      const updatedColumnNames = { ...columnNames, [status]: newName };
+      
+      const { error } = await supabase
+        .from('boards')
+        .update({ column_names: updatedColumnNames })
+        .eq('id', boardId);
+
+      if (error) {
+        console.error('Error updating column name:', error);
+        toast({ title: "Error", description: "Failed to update column name." });
+      } else {
+        setColumnNames(updatedColumnNames);
+        toast({ title: "Success", description: "Column name updated successfully." });
+      }
+    } catch (error) {
+      console.error('Error updating column name:', error);
+      toast({ title: "Error", description: "Failed to update column name." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -559,22 +596,22 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       <FiltersBar value={filters} onChange={setFilters} />
       <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
         <div className="flex-none w-80 h-full">
-          <Column title="Backlog" status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.backlog} status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
         <div className="flex-none w-80 h-full">
-          <Column title="In discussion" status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.discussion} status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
         <div className="flex-none w-80 h-full">
-          <Column title="In production" status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.production} status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
         <div className="flex-none w-80 h-full">
-          <Column title="In review" status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.review} status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
         <div className="flex-none w-80 h-full">
-          <Column title="Roadblock" status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.roadblock} status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
         <div className="flex-none w-80 h-full">
-          <Column title="Done" status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} />
+          <Column title={columnNames.done} status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
         </div>
       </div>
       {activeIdea && <IdeaModal 
