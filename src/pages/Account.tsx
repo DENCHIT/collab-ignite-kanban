@@ -9,10 +9,7 @@ import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Upload, X, Plus, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, X } from "lucide-react";
 import EmailPreferences from "@/components/EmailPreferences";
 
 interface Profile {
@@ -42,15 +39,10 @@ export default function Account() {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
+  const { toast } = useToast();
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [canCreateBoards, setCanCreateBoards] = useState(false);
-  const [creatingBoard, setCreatingBoard] = useState(false);
-  const [newBoardName, setNewBoardName] = useState("");
-  const [newBoardType, setNewBoardType] = useState("idea");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -90,18 +82,6 @@ export default function Account() {
         setDisplayName(profileData.display_name || "");
         setAvatarUrl(profileData.avatar_url || "");
       }
-
-      // Check if user can create boards (admin or manager)
-      const { data: hasManagerRole } = await supabase.rpc('has_role', {
-        _user_email: user?.email || '',
-        _role: 'manager'
-      });
-      const { data: hasAdminRole } = await supabase.rpc('has_role', {
-        _user_email: user?.email || '',
-        _role: 'admin'
-      });
-      
-      setCanCreateBoards(hasManagerRole || hasAdminRole);
 
       // Load boards
       const { data: boardsData, error: boardsError } = await supabase.rpc('get_my_boards');
@@ -354,99 +334,6 @@ export default function Account() {
     }
   };
 
-  const handleCreateBoard = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBoardName.trim()) return;
-
-    setCreatingBoard(true);
-    try {
-      // Create slug from name
-      const slug = newBoardName
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-
-      // Insert new board
-      const { data: newBoard, error } = await supabase
-        .from('boards')
-        .insert({
-          name: newBoardName.trim(),
-          slug: slug,
-          item_type: newBoardType,
-          created_by: user?.id,
-          created_by_email: user?.email
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Add user as manager of the board
-      const { error: memberError } = await supabase
-        .from('board_members')
-        .insert({
-          board_id: newBoard.id,
-          email: user?.email,
-          display_name: profile?.display_name || user?.email?.split('@')[0] || 'User',
-          role: 'manager'
-        });
-
-      if (memberError) throw memberError;
-
-      // Refresh boards list
-      const { data: boardsData } = await supabase.rpc('get_my_boards');
-      if (boardsData) {
-        setBoards(boardsData);
-      }
-
-      setNewBoardName("");
-      setNewBoardType("idea");
-      setIsCreateDialogOpen(false);
-      
-      toast({
-        title: "Board created",
-        description: `"${newBoardName.trim()}" has been created successfully.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create board.",
-        variant: "destructive",
-      });
-    } finally {
-      setCreatingBoard(false);
-    }
-  };
-
-  const handleDeleteBoard = async (boardId: string, boardName: string) => {
-    try {
-      // Delete the board
-      const { error } = await supabase
-        .from('boards')
-        .delete()
-        .eq('id', boardId);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setBoards(prev => prev.filter(board => board.board_id !== boardId));
-      
-      toast({
-        title: "Board deleted",
-        description: `"${boardName}" has been deleted successfully.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete board.",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="container mx-auto py-20">
@@ -570,62 +457,7 @@ export default function Account() {
           {/* Boards Section */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>My Boards ({boards.length})</CardTitle>
-                {canCreateBoards && (
-                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Board
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create New Board</DialogTitle>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateBoard} className="space-y-4">
-                        <div>
-                          <Label htmlFor="boardName">Board Name</Label>
-                          <Input
-                            id="boardName"
-                            value={newBoardName}
-                            onChange={(e) => setNewBoardName(e.target.value)}
-                            placeholder="Enter board name"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="boardType">Item Type</Label>
-                          <Select value={newBoardType} onValueChange={setNewBoardType}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="idea">Ideas</SelectItem>
-                              <SelectItem value="task">Tasks</SelectItem>
-                              <SelectItem value="bug">Bugs</SelectItem>
-                              <SelectItem value="feature">Features</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button type="submit" disabled={creatingBoard} className="flex-1">
-                            {creatingBoard ? "Creating..." : "Create Board"}
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => setIsCreateDialogOpen(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
+              <CardTitle>My Boards ({boards.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {boards.length === 0 ? (
@@ -658,40 +490,11 @@ export default function Account() {
                           {board.item_type} • Joined {new Date(board.joined_at).toLocaleDateString()}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button asChild size="sm" variant="outline">
-                          <Link to={`/b/${board.board_slug}`}>
-                            Open
-                          </Link>
-                        </Button>
-                        {board.role === 'manager' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Board</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{board.board_name}"? 
-                                  This action cannot be undone and will permanently delete the board and all its content.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteBoard(board.board_id, board.board_name)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete Board
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/b/${board.board_slug}`}>
+                          Open
+                        </Link>
+                      </Button>
                     </div>
                   ))}
                 </div>
