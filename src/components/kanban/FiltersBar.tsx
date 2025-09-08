@@ -16,7 +16,7 @@ export function FiltersBar({ value, onChange }: { value: FiltersState; onChange:
       <Input
         data-lpignore="true"
         name="search_filter"
-        placeholder="Search ideas..."
+        placeholder="Search..."
         className="max-w-md"
         value={value.q}
         onChange={(e) => onChange({ ...value, q: e.target.value })}
