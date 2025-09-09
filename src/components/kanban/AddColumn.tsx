@@ -79,7 +79,7 @@ export function AddColumn({ onAddColumn }: AddColumnProps) {
             className="flex flex-col items-center gap-2 h-full w-full"
           >
             <Plus className="h-6 w-6" />
-            <span className="text-xs">Add Column</span>
+            <span className="text-xs">Add</br>Column</span>
           </Button>
         </CardContent>
       </Card>
