@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { QuickChecklist } from "@/components/ui/quick-checklist";
@@ -9,7 +9,7 @@ import { AssigneeSelector } from "@/components/ui/assignee-selector";
 import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
 import { Input } from "@/components/ui/input";
 import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X } from "lucide-react";
-import { Idea, IdeaStatus, IdeaChecklistItem } from "@/types/idea";
+import { Idea, IdeaStatus, CoreIdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,14 +23,10 @@ const statusClass: Record<IdeaStatus, string> = {
   done: "border-l-4 border-l-primary",
 };
 
-const getStatusOptions = (columnNames?: Record<IdeaStatus, string>): { value: IdeaStatus; label: string }[] => [
-  { value: "backlog", label: columnNames?.backlog || "Backlog" },
-  { value: "discussion", label: columnNames?.discussion || "Discussion" },
-  { value: "production", label: columnNames?.production || "Production" },
-  { value: "review", label: columnNames?.review || "Review" },
-  { value: "roadblock", label: columnNames?.roadblock || "Roadblock" },
-  { value: "done", label: columnNames?.done || "Done" },
-];
+const getStatusOptions = (columnNames?: Record<string, string>): { value: string; label: string }[] => {
+  if (!columnNames) return [];
+  return Object.entries(columnNames).map(([value, label]) => ({ value, label }));
+};
 
 export function Column({
   title,
@@ -43,7 +39,9 @@ export function Column({
   boardSlug,
   onUpdateIdea,
   onUpdateColumnName,
+  onDeleteColumn,
   columnNames,
+  isCustomColumn = false,
 }: {
   title: string;
   status: IdeaStatus;
@@ -55,7 +53,9 @@ export function Column({
   boardSlug?: string;
   onUpdateIdea?: (updatedIdea: Idea) => void;
   onUpdateColumnName?: (status: IdeaStatus, newName: string) => void;
+  onDeleteColumn?: (status: string) => void;
   columnNames?: Record<IdeaStatus, string>;
+  isCustomColumn?: boolean;
 }) {
   const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -217,7 +217,7 @@ export function Column({
     }
   };
 
-  const handleMove = (ideaId: string, toStatus: IdeaStatus) => {
+  const handleMove = (ideaId: string, toStatus: string) => {
     if (toStatus === "roadblock") {
       const reason = prompt("Reason for roadblock?") || undefined;
       onMove(ideaId, toStatus, reason);
@@ -313,7 +313,27 @@ export function Column({
             {onUpdateColumnName && <Edit2 className="h-3 w-3 opacity-50" />}
           </div>
         )}
-        <Badge variant="secondary">{ideas.length}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{ideas.length}</Badge>
+          {isCustomColumn && onDeleteColumn && canManageBoard && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100] bg-popover border shadow-md min-w-32">
+                <DropdownMenuItem
+                  onClick={() => onDeleteColumn(status)}
+                  className="cursor-pointer text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete Column
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
       <ScrollArea className="flex-1 p-2">
         <div className="space-y-2">

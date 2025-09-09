@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Column } from "./Column";
+import { AddColumn } from "./AddColumn";
 import { FiltersBar, FiltersState } from "./FiltersBar";
-import { Idea, IdeaStatus, Thresholds } from "@/types/idea";
+import { Idea, IdeaStatus, CoreIdeaStatus, Thresholds } from "@/types/idea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { IdeaModal } from "./IdeaModal";
@@ -62,7 +63,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   const [boardId, setBoardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [columnNames, setColumnNames] = useState<Record<IdeaStatus, string>>({
+  const [columnNames, setColumnNames] = useState<Record<string, string>>({
     backlog: "Backlog",
     discussion: "In discussion", 
     production: "In production",
@@ -70,6 +71,15 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     roadblock: "Roadblock",
     done: "Done"
   });
+  
+  // Define the order of core columns
+  const coreColumnOrder: CoreIdeaStatus[] = ["backlog", "discussion", "production", "review", "roadblock", "done"];
+  
+  // Get all column keys in proper order (core columns first, then custom columns)
+  const allColumns = useMemo(() => {
+    const customColumns = Object.keys(columnNames).filter(key => !coreColumnOrder.includes(key as CoreIdeaStatus));
+    return [...coreColumnOrder, ...customColumns];
+  }, [columnNames]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -616,6 +626,86 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     }
   };
 
+  const addColumn = async (columnName: string) => {
+    if (!boardId || !columnName.trim()) return;
+
+    try {
+      // Generate a unique key for the new column
+      const columnKey = `custom_${Date.now()}`;
+      const updatedColumnNames = {
+        ...columnNames,
+        [columnKey]: columnName.trim()
+      };
+
+      const { error } = await supabase
+        .from('boards')
+        .update({ column_names: updatedColumnNames })
+        .eq('id', boardId);
+
+      if (error) {
+        console.error('Error adding column:', error);
+        toast({ title: "Error", description: "Failed to add column." });
+      } else {
+        setColumnNames(updatedColumnNames);
+        toast({ title: "Success", description: "Column added successfully." });
+      }
+    } catch (error) {
+      console.error('Error adding column:', error);
+      toast({ title: "Error", description: "Failed to add column." });
+    }
+  };
+
+  const deleteColumn = async (columnKey: string) => {
+    if (!boardId || coreColumnOrder.includes(columnKey as CoreIdeaStatus)) {
+      toast({ title: "Error", description: "Cannot delete core columns." });
+      return;
+    }
+
+    try {
+      // Check if any ideas are in this column
+      const ideasInColumn = ideas.filter(idea => idea.status === columnKey);
+      if (ideasInColumn.length > 0) {
+        const shouldDelete = confirm(`This column contains ${ideasInColumn.length} items. They will be moved to Backlog. Continue?`);
+        if (!shouldDelete) return;
+
+        // Move all ideas to backlog
+        for (const idea of ideasInColumn) {
+          await supabase
+            .from('ideas')
+            .update({ 
+              status: 'backlog',
+              last_activity_at: new Date().toISOString()
+            })
+            .eq('id', idea.id);
+        }
+      }
+
+      // Remove column from column names
+      const updatedColumnNames = { ...columnNames };
+      delete updatedColumnNames[columnKey];
+
+      const { error } = await supabase
+        .from('boards')
+        .update({ column_names: updatedColumnNames })
+        .eq('id', boardId);
+
+      if (error) {
+        console.error('Error deleting column:', error);
+        toast({ title: "Error", description: "Failed to delete column." });
+      } else {
+        setColumnNames(updatedColumnNames);
+        // Update local ideas state to reflect moved ideas
+        setIdeas(prev => prev.map(idea => 
+          idea.status === columnKey ? { ...idea, status: 'backlog' } : idea
+        ));
+        toast({ title: "Success", description: "Column deleted successfully." });
+      }
+    } catch (error) {
+      console.error('Error deleting column:', error);
+      toast({ title: "Error", description: "Failed to delete column." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -641,24 +731,26 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       </div>
       <FiltersBar value={filters} onChange={setFilters} />
       <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.backlog} status="backlog" ideas={grouped.backlog} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.discussion} status="discussion" ideas={grouped.discussion} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.production} status="production" ideas={grouped.production} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.review} status="review" ideas={grouped.review} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.roadblock} status="roadblock" ideas={grouped.roadblock} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
-        <div className="flex-none w-80 h-full">
-          <Column title={columnNames.done} status="done" ideas={grouped.done} onMove={move} onVote={vote} onOpen={setActiveIdea} onDelete={deleteIdea} boardSlug={boardSlug} onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} onUpdateColumnName={updateColumnName} columnNames={columnNames} />
-        </div>
+        {allColumns.map((columnKey) => (
+          <div key={columnKey} className="flex-none w-80 h-full">
+            <Column 
+              title={columnNames[columnKey]} 
+              status={columnKey} 
+              ideas={grouped[columnKey] || []} 
+              onMove={move} 
+              onVote={vote} 
+              onOpen={setActiveIdea} 
+              onDelete={deleteIdea} 
+              boardSlug={boardSlug} 
+              onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} 
+              onUpdateColumnName={updateColumnName} 
+              onDeleteColumn={!coreColumnOrder.includes(columnKey as CoreIdeaStatus) ? deleteColumn : undefined}
+              columnNames={columnNames} 
+              isCustomColumn={!coreColumnOrder.includes(columnKey as CoreIdeaStatus)}
+            />
+          </div>
+        ))}
+        <AddColumn onAddColumn={addColumn} />
       </div>
       {activeIdea && <IdeaModal 
         idea={activeIdea} 

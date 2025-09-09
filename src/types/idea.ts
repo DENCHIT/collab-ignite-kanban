@@ -1,10 +1,14 @@
-export type IdeaStatus =
+// Core status types - these are the default columns
+export type CoreIdeaStatus = 
   | "backlog"
   | "discussion"
   | "production"
   | "review"
   | "roadblock"
   | "done";
+
+// IdeaStatus can now be any string to support custom columns
+export type IdeaStatus = string;
 
 export interface IdeaChecklistItem {
   id: string;
