@@ -417,6 +417,9 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     
     updated = autoMove(updated);
 
+    // Optimistically update UI
+    setIdeas(prev => prev.map(idea => idea.id === id ? updated : idea));
+
     // Update in database
     const { error } = await supabase
       .from('ideas')
@@ -433,6 +436,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (error) {
       console.error('Error updating vote:', error);
       toast({ title: "Error", description: "Failed to save vote. Please try again." });
+      // Revert on error
+      setIdeas(prev => prev.map(idea => idea.id === id ? (ideaToUpdate as Idea) : idea));
     }
   }
 
@@ -453,6 +458,9 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (from === "roadblock" && to !== "roadblock") updated.blockedReason = undefined;
     updated = logHistory(updated, { type: "moved", user: getDisplayName() ?? "Anonymous", timestamp: updated.lastActivityAt, from, to, details: reason });
     
+    // Optimistically update UI
+    setIdeas(prev => prev.map(idea => idea.id === id ? updated : idea));
+    
     // Update in database
     const { error } = await supabase
       .from('ideas')
@@ -467,6 +475,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (error) {
       console.error('Error updating move:', error);
       toast({ title: "Error", description: "Failed to move idea. Please try again." });
+      // Revert on error
+      setIdeas(prev => prev.map(idea => idea.id === id ? (ideaToUpdate as Idea) : idea));
     } else {
       // Send email notification for idea move to board managers
       try {
@@ -516,6 +526,9 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       assignees: [],
     };
     
+    // Optimistically add to UI
+    setIdeas(prev => [newIdea, ...prev]);
+    
     // Insert into database
     const { error } = await supabase
       .from('ideas')
@@ -539,6 +552,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     if (error) {
       console.error('Error adding idea:', error);
       toast({ title: "Error", description: "Failed to add idea. Please try again." });
+      // Revert on error
+      setIdeas(prev => prev.filter(i => i.id !== newIdea.id));
     } else {
       // Send email notification for new idea to board managers
       try {
