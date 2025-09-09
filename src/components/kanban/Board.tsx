@@ -248,6 +248,37 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     };
   }, [boardId]);
 
+  // Subscribe to board metadata updates (name, column_names, item_type)
+  useEffect(() => {
+    if (!boardId) return;
+
+    const channel = supabase
+      .channel(`board-changes-${boardId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'boards',
+          filter: `id=eq.${boardId}`
+        },
+        (payload) => {
+          console.log('Board update:', payload);
+          const newCols = (payload.new?.column_names || null) as Record<IdeaStatus, string> | null;
+          if (newCols) setColumnNames(newCols);
+          const newName = payload.new?.name as string | undefined;
+          if (newName) setBoardName(newName);
+          const newType = payload.new?.item_type as string | undefined;
+          if (newType) setBoardItemType(newType);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boardId]);
+
   const grouped = useMemo(() => {
     const buckets: Record<IdeaStatus, Idea[]> = {
       backlog: [],
