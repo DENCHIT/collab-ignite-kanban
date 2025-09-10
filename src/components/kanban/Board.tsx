@@ -669,10 +669,18 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       const newColumns = [...allColumns];
       [newColumns[currentIndex], newColumns[newIndex]] = [newColumns[newIndex], newColumns[currentIndex]];
 
-      // For custom columns, we need to recreate the columnNames object in the new order
+      // Build the complete columnNames object with proper ordering
       const reorderedColumnNames: Record<string, string> = {};
+      
+      // Add all columns in the new order
       newColumns.forEach(key => {
-        reorderedColumnNames[key] = columnNames[key];
+        if (coreColumnOrder.includes(key as CoreIdeaStatus)) {
+          // For core columns, use default names or existing custom names
+          reorderedColumnNames[key] = columnNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
+        } else {
+          // For custom columns, use the existing name
+          reorderedColumnNames[key] = columnNames[key];
+        }
       });
 
       const { error } = await supabase
