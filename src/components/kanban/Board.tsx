@@ -655,6 +655,44 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     }
   };
 
+  const moveColumn = async (columnKey: string, direction: 'left' | 'right') => {
+    if (!boardId) return;
+
+    try {
+      const currentIndex = allColumns.indexOf(columnKey);
+      if (currentIndex === -1) return;
+
+      const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex < 0 || newIndex >= allColumns.length) return;
+
+      // Create new column order
+      const newColumns = [...allColumns];
+      [newColumns[currentIndex], newColumns[newIndex]] = [newColumns[newIndex], newColumns[currentIndex]];
+
+      // For custom columns, we need to recreate the columnNames object in the new order
+      const reorderedColumnNames: Record<string, string> = {};
+      newColumns.forEach(key => {
+        reorderedColumnNames[key] = columnNames[key];
+      });
+
+      const { error } = await supabase
+        .from('boards')
+        .update({ column_names: reorderedColumnNames })
+        .eq('id', boardId);
+
+      if (error) {
+        console.error('Error reordering columns:', error);
+        toast({ title: "Error", description: "Failed to reorder columns." });
+      } else {
+        setColumnNames(reorderedColumnNames);
+        toast({ title: "Success", description: "Column reordered successfully." });
+      }
+    } catch (error) {
+      console.error('Error reordering columns:', error);
+      toast({ title: "Error", description: "Failed to reorder columns." });
+    }
+  };
+
   const deleteColumn = async (columnKey: string) => {
     if (!boardId || coreColumnOrder.includes(columnKey as CoreIdeaStatus)) {
       toast({ title: "Error", description: "Cannot delete core columns." });
@@ -731,7 +769,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       </div>
       <FiltersBar value={filters} onChange={setFilters} />
       <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
-        {allColumns.map((columnKey) => (
+        {allColumns.map((columnKey, index) => (
           <div key={columnKey} className="flex-none w-80 h-full">
             <Column 
               title={columnNames[columnKey]} 
@@ -745,8 +783,12 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               onUpdateIdea={(updatedIdea) => setIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea))} 
               onUpdateColumnName={updateColumnName} 
               onDeleteColumn={!coreColumnOrder.includes(columnKey as CoreIdeaStatus) ? deleteColumn : undefined}
+              onMoveColumn={moveColumn}
               columnNames={columnNames} 
               isCustomColumn={!coreColumnOrder.includes(columnKey as CoreIdeaStatus)}
+              canMoveLeft={index > 0}
+              canMoveRight={index < allColumns.length - 1}
+              hasIdeas={(grouped[columnKey] || []).length > 0}
             />
           </div>
         ))}

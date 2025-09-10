@@ -8,7 +8,7 @@ import { QuickChecklist } from "@/components/ui/quick-checklist";
 import { AssigneeSelector } from "@/components/ui/assignee-selector";
 import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X } from "lucide-react";
+import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Idea, IdeaStatus, CoreIdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -40,8 +40,12 @@ export function Column({
   onUpdateIdea,
   onUpdateColumnName,
   onDeleteColumn,
+  onMoveColumn,
   columnNames,
   isCustomColumn = false,
+  canMoveLeft = false,
+  canMoveRight = false,
+  hasIdeas = false,
 }: {
   title: string;
   status: IdeaStatus;
@@ -54,8 +58,12 @@ export function Column({
   onUpdateIdea?: (updatedIdea: Idea) => void;
   onUpdateColumnName?: (status: IdeaStatus, newName: string) => void;
   onDeleteColumn?: (status: string) => void;
+  onMoveColumn?: (status: string, direction: 'left' | 'right') => void;
   columnNames?: Record<IdeaStatus, string>;
   isCustomColumn?: boolean;
+  canMoveLeft?: boolean;
+  canMoveRight?: boolean;
+  hasIdeas?: boolean;
 }) {
   const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -314,8 +322,30 @@ export function Column({
           </div>
         )}
         <div className="flex items-center gap-2">
+          {onMoveColumn && canManageBoard && (
+            <>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-5 w-5 p-0"
+                onClick={() => onMoveColumn(status, 'left')}
+                disabled={!canMoveLeft}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-5 w-5 p-0"
+                onClick={() => onMoveColumn(status, 'right')}
+                disabled={!canMoveRight}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </>
+          )}
           <Badge variant="secondary">{ideas.length}</Badge>
-          {isCustomColumn && onDeleteColumn && canManageBoard && (
+          {onDeleteColumn && canManageBoard && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -324,7 +354,16 @@ export function Column({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="z-[100] bg-popover border shadow-md min-w-32">
                 <DropdownMenuItem
-                  onClick={() => onDeleteColumn(status)}
+                  onClick={() => {
+                    if (hasIdeas) {
+                      const confirmMessage = `This column has ${ideas.length} ${ideas.length === 1 ? 'item' : 'items'}. Are you sure you want to delete it? All items will be moved to Backlog.`;
+                      if (window.confirm(confirmMessage)) {
+                        onDeleteColumn(status);
+                      }
+                    } else {
+                      onDeleteColumn(status);
+                    }
+                  }}
                   className="cursor-pointer text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-3 w-3 mr-2" />
