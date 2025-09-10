@@ -75,11 +75,20 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
   // Define the order of core columns
   const coreColumnOrder: CoreIdeaStatus[] = ["backlog", "discussion", "production", "review", "roadblock", "done"];
   
-  // Get all column keys in proper order (core columns first, then custom columns)
+  // Store the column order from database
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  
+  // Get all column keys in proper order (use stored order if available, otherwise default)
   const allColumns = useMemo(() => {
-    const customColumns = Object.keys(columnNames).filter(key => !coreColumnOrder.includes(key as CoreIdeaStatus));
-    return [...coreColumnOrder, ...customColumns];
-  }, [columnNames]);
+    if (columnOrder.length > 0) {
+      // Use the stored order from database
+      return columnOrder;
+    } else {
+      // Fallback to default order (core columns first, then custom columns)
+      const customColumns = Object.keys(columnNames).filter(key => !coreColumnOrder.includes(key as CoreIdeaStatus));
+      return [...coreColumnOrder, ...customColumns];
+    }
+  }, [columnNames, columnOrder]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -124,7 +133,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         // Get board ID from slug
         const { data: board, error: boardError } = await supabase
           .from('boards')
-          .select('id, name, item_type, column_names')
+          .select('id, name, item_type, column_names, column_order')
           .eq('slug', boardSlug)
           .single();
 
@@ -143,6 +152,11 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         // Set column names if they exist
         if (board.column_names) {
           setColumnNames(board.column_names as Record<IdeaStatus, string>);
+        }
+        
+        // Set column order if it exists
+        if (board.column_order && board.column_order.length > 0) {
+          setColumnOrder(board.column_order);
         }
 
         // Load ideas for this board
@@ -276,6 +290,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
           console.log('Board update:', payload);
           const newCols = (payload.new?.column_names || null) as Record<IdeaStatus, string> | null;
           if (newCols) setColumnNames(newCols);
+          const newOrder = (payload.new?.column_order || null) as string[] | null;
+          if (newOrder && newOrder.length > 0) setColumnOrder(newOrder);
           const newName = payload.new?.name as string | undefined;
           if (newName) setBoardName(newName);
           const newType = payload.new?.item_type as string | undefined;
@@ -637,9 +653,15 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         [columnKey]: columnName.trim()
       };
 
+      // Add the new column to the end of the current order
+      const updatedColumnOrder = [...(columnOrder.length > 0 ? columnOrder : allColumns), columnKey];
+
       const { error } = await supabase
         .from('boards')
-        .update({ column_names: updatedColumnNames })
+        .update({ 
+          column_names: updatedColumnNames,
+          column_order: updatedColumnOrder
+        })
         .eq('id', boardId);
 
       if (error) {
@@ -647,6 +669,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         toast({ title: "Error", description: "Failed to add column." });
       } else {
         setColumnNames(updatedColumnNames);
+        setColumnOrder(updatedColumnOrder);
         toast({ title: "Success", description: "Column added successfully." });
       }
     } catch (error) {
@@ -694,8 +717,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         toast({ title: "Error", description: "Failed to reorder columns." });
       } else {
         setColumnNames(reorderedColumnNames);
-        // Force refresh to get the new order
-        window.location.reload();
+        setColumnOrder(columnOrder);
         toast({ title: "Success", description: "Column reordered successfully." });
       }
     } catch (error) {
@@ -733,9 +755,15 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       const updatedColumnNames = { ...columnNames };
       delete updatedColumnNames[columnKey];
 
+      // Update the column order to remove the deleted column
+      const updatedColumnOrder = columnOrder.filter(col => col !== columnKey);
+
       const { error } = await supabase
         .from('boards')
-        .update({ column_names: updatedColumnNames })
+        .update({ 
+          column_names: updatedColumnNames,
+          column_order: updatedColumnOrder.length > 0 ? updatedColumnOrder : null
+        })
         .eq('id', boardId);
 
       if (error) {
@@ -743,6 +771,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         toast({ title: "Error", description: "Failed to delete column." });
       } else {
         setColumnNames(updatedColumnNames);
+        setColumnOrder(updatedColumnOrder);
         // Update local ideas state to reflect moved ideas
         setIdeas(prev => prev.map(idea => 
           idea.status === columnKey ? { ...idea, status: 'backlog' } : idea
