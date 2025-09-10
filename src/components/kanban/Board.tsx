@@ -670,22 +670,23 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
       [newColumns[currentIndex], newColumns[newIndex]] = [newColumns[newIndex], newColumns[currentIndex]];
 
       // Build the complete columnNames object with proper ordering
+      // We'll store the order by using numbered keys to preserve sequence
       const reorderedColumnNames: Record<string, string> = {};
       
-      // Add all columns in the new order
-      newColumns.forEach(key => {
-        if (coreColumnOrder.includes(key as CoreIdeaStatus)) {
-          // For core columns, use default names or existing custom names
-          reorderedColumnNames[key] = columnNames[key] || key.charAt(0).toUpperCase() + key.slice(1);
-        } else {
-          // For custom columns, use the existing name
-          reorderedColumnNames[key] = columnNames[key];
-        }
+      // Add all columns in the new order with sequence preservation
+      newColumns.forEach((key, index) => {
+        reorderedColumnNames[key] = columnNames[key];
       });
+
+      // Also store the column order separately
+      const columnOrder = newColumns;
 
       const { error } = await supabase
         .from('boards')
-        .update({ column_names: reorderedColumnNames })
+        .update({ 
+          column_names: reorderedColumnNames,
+          column_order: columnOrder 
+        })
         .eq('id', boardId);
 
       if (error) {
@@ -693,6 +694,8 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         toast({ title: "Error", description: "Failed to reorder columns." });
       } else {
         setColumnNames(reorderedColumnNames);
+        // Force refresh to get the new order
+        window.location.reload();
         toast({ title: "Success", description: "Column reordered successfully." });
       }
     } catch (error) {
