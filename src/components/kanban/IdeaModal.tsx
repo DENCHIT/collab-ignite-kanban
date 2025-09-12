@@ -17,6 +17,7 @@ import { Idea, IdeaComment, IdeaCommentAttachment, IdeaChecklistItem } from "@/t
 import { Clock, Reply, Paperclip, CheckSquare, Users, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import DOMPurify from 'dompurify';
+import { linkifyText } from "@/lib/linkify";
 
 interface IdeaModalProps {
   idea: Idea;
@@ -777,9 +778,9 @@ export const IdeaModal = ({ idea, isOpen, onClose, onUpdate, boardSlug }: IdeaMo
                             <div 
                               className="text-sm prose prose-sm max-w-none"
                               dangerouslySetInnerHTML={{ 
-                                __html: DOMPurify.sanitize(entry.content || entry.text, {
-                                  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br'],
-                                  ALLOWED_ATTR: []
+                                __html: DOMPurify.sanitize(linkifyText(entry.content || entry.text), {
+                                  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'a'],
+                                  ALLOWED_ATTR: ['href', 'target', 'rel', 'class']
                                 })
                               }}
                             />
