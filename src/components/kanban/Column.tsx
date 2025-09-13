@@ -8,7 +8,7 @@ import { QuickChecklist } from "@/components/ui/quick-checklist";
 import { AssigneeSelector } from "@/components/ui/assignee-selector";
 import { AssigneeAvatars } from "@/components/ui/assignee-avatars";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { MoreHorizontal, ChevronUp, ChevronDown, Trash2, CheckSquare, Edit2, Check, X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Idea, IdeaStatus, CoreIdeaStatus, IdeaChecklistItem } from "@/types/idea";
 import { getUserEmail, getUserToken } from "@/lib/session";
 import { useEffect, useState } from "react";
@@ -46,6 +46,7 @@ export function Column({
   canMoveLeft = false,
   canMoveRight = false,
   hasIdeas = false,
+  onAddIdea,
 }: {
   title: string;
   status: IdeaStatus;
@@ -64,6 +65,7 @@ export function Column({
   canMoveLeft?: boolean;
   canMoveRight?: boolean;
   hasIdeas?: boolean;
+  onAddIdea?: (status: IdeaStatus) => void;
 }) {
   const [isManagerOrAssistant, setIsManagerOrAssistant] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -261,7 +263,7 @@ export function Column({
   };
 
   return (
-    <div className="flex flex-col h-full rounded-lg bg-card border" aria-label={`${title} column`}>
+    <div className="flex flex-col h-full rounded-lg bg-card border relative" aria-label={`${title} column`}>
       <div className="px-3 py-2 border-b flex items-center justify-between">
         {isEditingTitle ? (
           <div className="flex items-center gap-2 flex-1">
@@ -500,6 +502,19 @@ export function Column({
           ))}
         </div>
       </ScrollArea>
+      
+      {/* Add idea/task button */}
+      {onAddIdea && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute bottom-3 right-3 h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full shadow-sm border bg-background/90 backdrop-blur-sm"
+          onClick={() => onAddIdea(status)}
+          title="Add item to this column"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }

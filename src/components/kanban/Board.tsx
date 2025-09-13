@@ -526,7 +526,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
     }
   }
 
-  async function addIdea(title: string, description?: string) {
+  async function addIdea(title: string, description?: string, status: IdeaStatus = "backlog") {
     if (!boardId) {
       toast({ title: "Error", description: "Board not loaded. Please try again." });
       return;
@@ -565,7 +565,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
         description: newIdea.description,
         creator_name: newIdea.creatorName,
         score: newIdea.score,
-        status: newIdea.status,
+        status: status,
         last_activity_at: newIdea.lastActivityAt,
         voters: JSON.parse(JSON.stringify(newIdea.voters)) as Json,
         comments: JSON.parse(JSON.stringify(newIdea.comments)) as Json,
@@ -829,6 +829,13 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
               canMoveLeft={index > 0}
               canMoveRight={index < allColumns.length - 1}
               hasIdeas={(grouped[columnKey] || []).length > 0}
+              onAddIdea={(status) => {
+                const itemTypeCapitalized = boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1);
+                const title = prompt(`${itemTypeCapitalized} title`);
+                if (!title) return;
+                const description = prompt("Optional description");
+                addIdea(title, description ?? undefined, status);
+              }}
             />
           </div>
         ))}
