@@ -807,7 +807,7 @@ export function Board({ boardSlug }: { boardSlug?: string }) {
           addIdea(title, description ?? undefined);
         }}>New {boardItemType.charAt(0).toUpperCase() + boardItemType.slice(1)}</Button>
       </div>
-      <FiltersBar value={filters} onChange={setFilters} />
+      <FiltersBar value={filters} onChange={setFilters} itemType={boardItemType} />
       <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
         {allColumns.map((columnKey, index) => (
           <div key={columnKey} className="flex-none w-80 h-full">
