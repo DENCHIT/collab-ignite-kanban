@@ -5,6 +5,7 @@ import { User } from "@supabase/supabase-js";
 import AuthForm from "@/components/auth/AuthForm";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
+import InviteToBoard from "@/components/InviteToBoard";
 
 // Safety net: Auto-redirect authenticated users if they have a saved redirect path
 const RootAutoRedirect = ({ user }: { user: User | null }) => {
@@ -89,18 +90,22 @@ export default function Home() {
           </h1>
         </div>
         
-        <Card className="backdrop-blur-sm bg-card/80 border-border/50">
-          <CardContent className="p-8 space-y-4">
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Welcome back! You can now access any board you're a member of, or join new boards with a passcode.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Button asChild>
-                <Link to="/account">View My Boards</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card className="backdrop-blur-sm bg-card/80 border-border/50">
+            <CardContent className="p-8 space-y-4">
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Welcome back! You can now access any board you're a member of, or join new boards with a passcode.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button asChild>
+                  <Link to="/account">View My Boards</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <InviteToBoard />
+        </div>
       </div>
     </div>
   );
