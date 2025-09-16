@@ -70,12 +70,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("This user is already a member of this board");
     }
 
-    // Create a unique invitation token
-    const inviteToken = crypto.randomUUID();
-    
-    // Store the invitation (you might want to create an invitations table for this)
-    // For now, we'll use a simple approach and add them directly to board_members
-    
     // Get or create a display name from email
     const displayName = email.split('@')[0];
     
@@ -91,12 +85,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to add user to board");
     }
 
-    // Create the invitation link
-    const inviteUrl = `${Deno.env.get("SUPABASE_URL")?.replace('supabase.co', 'supabase.co')}/auth/v1/verify?type=invite&token=${inviteToken}&redirect_to=${encodeURIComponent(`https://boards.zoby.ai/board/${board_slug}`)}`;
+    console.log("User added to board successfully");
 
     // Send the invitation email
     const emailResponse = await resend.emails.send({
-      from: "Zoby Boards <onboarding@resend.dev>",
+      from: "Zoby Boards <noreply@resend.dev>",
       to: [email],
       subject: `You've been invited to join "${board_name}" on Zoby Boards`,
       html: `
