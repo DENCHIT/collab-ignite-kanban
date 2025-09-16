@@ -73,16 +73,22 @@ const handler = async (req: Request): Promise<Response> => {
     // Get or create a display name from email
     const displayName = email.split('@')[0];
     
-    // Add the user to the board using the existing function
-    const { error: addMemberError } = await supabase.rpc('add_board_member', {
-      _slug: board_slug,
-      _email: email,
-      _display_name: displayName
-    });
+    // Add the user directly to the board_members table
+    const { error: addMemberError } = await supabase
+      .from('board_members')
+      .insert({
+        board_id: board_id,
+        email: email,
+        display_name: displayName,
+        role: 'member'
+      });
 
     if (addMemberError) {
       console.error("Error adding board member:", addMemberError);
-      throw new Error("Failed to add user to board");
+      // If it's a duplicate error, that's okay - the user is already a member
+      if (!addMemberError.message?.includes('duplicate') && !addMemberError.message?.includes('already exists')) {
+        throw new Error(`Failed to add user to board: ${addMemberError.message}`);
+      }
     }
 
     console.log("User added to board successfully");
