@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the invitation email
     const emailResponse = await resend.emails.send({
-      from: "Zoby Boards <noreply@resend.dev>",
+      from: "Zoby Boards <noreply@mail.zoby.ai>",
       to: [email],
       subject: `You've been invited to join "${board_name}" on Zoby Boards`,
       html: `
