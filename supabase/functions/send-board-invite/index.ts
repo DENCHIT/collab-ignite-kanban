@@ -132,7 +132,29 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Email response:", emailResponse);
+
+    // Check if email sending failed due to domain verification
+    if (emailResponse.error) {
+      console.error("Email sending error:", emailResponse.error);
+      
+      // If it's a domain verification error, still complete the invite but warn about email
+      if (emailResponse.error.message?.includes("verify a domain")) {
+        console.log("Domain verification required for email, but user added to board successfully");
+        return new Response(JSON.stringify({ 
+          success: true, 
+          warning: "User added to board, but email notification failed. Please verify your domain at resend.com/domains to send emails to other recipients." 
+        }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        });
+      } else {
+        throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
