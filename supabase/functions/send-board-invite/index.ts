@@ -70,28 +70,19 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("This user is already a member of this board");
     }
 
-    // Get or create a display name from email
-    const displayName = email.split('@')[0];
-    
-    // Add the user directly to the board_members table
-    const { error: addMemberError } = await supabase
-      .from('board_members')
-      .insert({
-        board_id: board_id,
-        email: email,
-        display_name: displayName,
-        role: 'member'
-      });
+    // Get the board's passcode to include in email
+    const { data: boardData, error: boardError } = await supabase
+      .from('boards')
+      .select('*')
+      .eq('id', board_id)
+      .single();
 
-    if (addMemberError) {
-      console.error("Error adding board member:", addMemberError);
-      // If it's a duplicate error, that's okay - the user is already a member
-      if (!addMemberError.message?.includes('duplicate') && !addMemberError.message?.includes('already exists')) {
-        throw new Error(`Failed to add user to board: ${addMemberError.message}`);
-      }
+    if (boardError || !boardData) {
+      throw new Error("Failed to retrieve board information");
     }
 
-    console.log("User added to board successfully");
+    // Note: Since passcodes are hashed, we'll include instructions for the user to get the passcode
+    console.log("Board information retrieved for invitation");
 
     // Send the invitation email
     const emailResponse = await resend.emails.send({
@@ -110,6 +101,15 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="color: #333; line-height: 1.6;">
             Zoby Boards is a collaborative platform where teams can share ideas, track tasks, and work together effectively.
           </p>
+          
+          <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <p style="color: #856404; margin: 0; font-weight: 500;">
+              <strong>Next Steps:</strong><br>
+              1. Click the "Join Board" button below<br>
+              2. Create an account or sign in<br>
+              3. Enter the board passcode (contact ${user.email} for the passcode)
+            </p>
+          </div>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="https://boards.zoby.ai/b/${board_slug}" 
