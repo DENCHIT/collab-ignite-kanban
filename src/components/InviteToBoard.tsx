@@ -18,6 +18,7 @@ interface Board {
 export default function InviteToBoard() {
   const [email, setEmail] = useState("");
   const [selectedBoard, setSelectedBoard] = useState("");
+  const [passcode, setPasscode] = useState("");
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingBoards, setLoadingBoards] = useState(true);
@@ -45,10 +46,10 @@ export default function InviteToBoard() {
   }
 
   async function handleInvite() {
-    if (!email || !selectedBoard) {
+    if (!email || !selectedBoard || !passcode) {
       toast({ 
         title: "Missing information", 
-        description: "Please enter an email and select a board." 
+        description: "Please enter an email, select a board, and provide the board passcode." 
       });
       return;
     }
@@ -71,7 +72,8 @@ export default function InviteToBoard() {
           email,
           board_id: selectedBoard,
           board_name: selectedBoardData?.board_name || 'Board',
-          board_slug: selectedBoardData?.board_slug || ''
+          board_slug: selectedBoardData?.board_slug || '',
+          passcode
         }
       });
 
@@ -86,6 +88,7 @@ export default function InviteToBoard() {
       
       setEmail("");
       setSelectedBoard("");
+      setPasscode("");
     } catch (error) {
       console.error('Error sending invite:', error);
       toast({ 
@@ -161,9 +164,20 @@ export default function InviteToBoard() {
           </Select>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="board-passcode">Board passcode</Label>
+          <Input
+            id="board-passcode"
+            type="text"
+            placeholder="Enter the board passcode"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+          />
+        </div>
+
         <Button 
           onClick={handleInvite} 
-          disabled={loading || !email || !selectedBoard}
+          disabled={loading || !email || !selectedBoard || !passcode}
           className="w-full"
         >
           {loading ? "Sending..." : "Send Invitation"}

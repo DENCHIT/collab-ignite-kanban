@@ -13,6 +13,7 @@ interface InviteRequest {
   board_id: string;
   board_name: string;
   board_slug: string;
+  passcode: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -42,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Authentication failed");
     }
 
-    const { email, board_id, board_name, board_slug }: InviteRequest = await req.json();
+    const { email, board_id, board_name, board_slug, passcode }: InviteRequest = await req.json();
 
     console.log("Processing invite for:", { email, board_id, board_name, board_slug });
 
@@ -107,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
               <strong>Next Steps:</strong><br>
               1. Click the "Join Board" button below<br>
               2. Create an account or sign in<br>
-              3. Enter the board passcode (contact ${user.email} for the passcode)
+              3. Enter this board passcode: <strong>${passcode}</strong>
             </p>
           </div>
           
