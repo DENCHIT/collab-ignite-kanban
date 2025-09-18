@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
           </p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://boards.zoby.ai/board/${board_slug}" 
+            <a href="https://boards.zoby.ai/b/${board_slug}" 
                style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
               Join Board
             </a>
@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <p style="color: #888; font-size: 14px; margin-top: 30px;">
             If the button doesn't work, you can copy and paste this link into your browser:<br>
-            <a href="https://boards.zoby.ai/board/${board_slug}" style="color: #0066cc;">https://boards.zoby.ai/board/${board_slug}</a>
+            <a href="https://boards.zoby.ai/b/${board_slug}" style="color: #0066cc;">https://boards.zoby.ai/b/${board_slug}</a>
           </p>
           
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
