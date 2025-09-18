@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      board_invitations: {
+        Row: {
+          board_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by_email: string
+          token: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by_email: string
+          token: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by_email?: string
+          token?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       board_members: {
         Row: {
           board_id: string
@@ -424,7 +460,7 @@ export type Database = {
       }
       init_profile_for_current_user: {
         Args: Record<PropertyKey, never> | { _display_name?: string }
-        Returns: string
+        Returns: undefined
       }
       is_board_assistant: {
         Args: { _board_slug: string; _user_email: string }

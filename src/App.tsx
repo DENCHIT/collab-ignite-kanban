@@ -11,6 +11,7 @@ import Admin from "./pages/Admin";
 import Account from "./pages/Account";
 import AuthCallback from "./pages/AuthCallback";
 import PasswordReset from "./pages/PasswordReset";
+import InvitationAccept from "./pages/InvitationAccept";
 import Header from "./components/layout/Header";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
         <AuthHashHandler />
         <Routes>
           <Route path="/b/:slug" element={<BoardPage />} />
+          <Route path="/invitation/:token" element={<InvitationAccept />} />
           <Route path="/" element={<Home />} />
           <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<Admin />} />

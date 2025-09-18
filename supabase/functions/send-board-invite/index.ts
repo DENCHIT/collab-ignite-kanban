@@ -13,7 +13,6 @@ interface InviteRequest {
   board_id: string;
   board_name: string;
   board_slug: string;
-  passcode: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -43,7 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Authentication failed");
     }
 
-    const { email, board_id, board_name, board_slug, passcode }: InviteRequest = await req.json();
+    const { email, board_id, board_name, board_slug }: InviteRequest = await req.json();
 
     console.log("Processing invite for:", { email, board_id, board_name, board_slug });
 
@@ -71,19 +70,25 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("This user is already a member of this board");
     }
 
-    // Get the board's passcode to include in email
-    const { data: boardData, error: boardError } = await supabase
-      .from('boards')
-      .select('*')
-      .eq('id', board_id)
-      .single();
+    // Generate a unique invitation token
+    const invitationToken = crypto.randomUUID();
+    
+    // Create the invitation record
+    const { error: inviteError } = await supabase
+      .from('board_invitations')
+      .insert({
+        board_id,
+        email,
+        token: invitationToken,
+        invited_by_email: user.email!
+      });
 
-    if (boardError || !boardData) {
-      throw new Error("Failed to retrieve board information");
+    if (inviteError) {
+      console.error('Error creating invitation:', inviteError);
+      throw new Error("Failed to create invitation");
     }
 
-    // Note: Since passcodes are hashed, we'll include instructions for the user to get the passcode
-    console.log("Board information retrieved for invitation");
+    console.log("Invitation created with token:", invitationToken);
 
     // Send the invitation email
     const emailResponse = await resend.emails.send({
@@ -103,25 +108,23 @@ const handler = async (req: Request): Promise<Response> => {
             Zoby Boards is a collaborative platform where teams can share ideas, track tasks, and work together effectively.
           </p>
           
-          <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 20px 0;">
-            <p style="color: #856404; margin: 0; font-weight: 500;">
-              <strong>Next Steps:</strong><br>
-              1. Click the "Join Board" button below<br>
-              2. Create an account or sign in<br>
-              3. Enter this board passcode: <strong>${passcode}</strong>
+          <div style="background: #e7f3ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0066cc; margin: 20px 0;">
+            <p style="color: #0066cc; margin: 0; font-weight: 500;">
+              <strong>Click the button below to automatically join the board!</strong><br>
+              No passcode required - this magic link will give you instant access.
             </p>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://boards.zoby.ai/b/${board_slug}" 
+            <a href="https://boards.zoby.ai/invitation/${invitationToken}" 
                style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-              Join Board
+              Join Board Now
             </a>
           </div>
           
           <p style="color: #888; font-size: 14px; margin-top: 30px;">
             If the button doesn't work, you can copy and paste this link into your browser:<br>
-            <a href="https://boards.zoby.ai/b/${board_slug}" style="color: #0066cc;">https://boards.zoby.ai/b/${board_slug}</a>
+            <a href="https://boards.zoby.ai/invitation/${invitationToken}" style="color: #0066cc;">https://boards.zoby.ai/invitation/${invitationToken}</a>
           </p>
           
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
