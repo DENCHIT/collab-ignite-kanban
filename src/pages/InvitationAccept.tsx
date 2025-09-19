@@ -32,27 +32,39 @@ export default function InvitationAccept() {
 
   async function loadInvitation() {
     try {
-      const { data, error } = await supabase
+      // First, get the invitation details
+      const { data: invitationData, error: invitationError } = await supabase
         .from('board_invitations')
-        .select(`
-          *,
-          boards (
-            id,
-            name,
-            slug
-          )
-        `)
+        .select('*')
         .eq('token', token)
         .is('used_at', null)
         .gt('expires_at', new Date().toISOString())
         .single();
 
-      if (error || !data) {
+      if (invitationError || !invitationData) {
+        console.error('Invitation error:', invitationError);
         setError("This invitation link is invalid or has expired");
         return;
       }
 
-      setInvitation(data);
+      // Then, get the board details
+      const { data: boardData, error: boardError } = await supabase
+        .from('boards')
+        .select('id, name, slug')
+        .eq('id', invitationData.board_id)
+        .single();
+
+      if (boardError || !boardData) {
+        console.error('Board error:', boardError);
+        setError("Failed to load board information");
+        return;
+      }
+
+      // Combine the data in the expected format
+      setInvitation({
+        ...invitationData,
+        boards: boardData
+      });
     } catch (error) {
       console.error('Error loading invitation:', error);
       setError("Failed to load invitation details");
