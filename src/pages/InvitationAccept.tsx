@@ -80,7 +80,7 @@ export default function InvitationAccept() {
 
     try {
       // Add user to board
-      const { error: addMemberError } = await supabase.functions.invoke('accept-board-invitation', {
+      const { data, error: addMemberError } = await supabase.functions.invoke('accept-board-invitation', {
         body: {
           token,
           display_name: user.email?.split('@')[0] || 'User'
@@ -91,13 +91,17 @@ export default function InvitationAccept() {
         throw addMemberError;
       }
 
+      if (!data || !data.success) {
+        throw new Error(data?.error || "Failed to accept invitation");
+      }
+
       toast({
         title: "Success!",
-        description: `You've been added to ${invitation.boards.name}`
+        description: `You've been added to ${data.board_name}`
       });
 
-      // Redirect to the board
-      navigate(`/b/${invitation.boards.slug}`);
+      // Redirect to the board using the slug from the response
+      navigate(`/b/${data.board_slug}`);
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({
