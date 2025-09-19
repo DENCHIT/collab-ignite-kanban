@@ -42,24 +42,36 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Processing invitation acceptance for:", { invitationToken, user_email: user.email });
 
     // Get the invitation details
-    const { data: invitation, error: invitationError } = await supabase
+    const { data: invitationData, error: invitationError } = await supabase
       .from('board_invitations')
-      .select(`
-        *,
-        boards (
-          id,
-          name,
-          slug
-        )
-      `)
+      .select('*')
       .eq('token', invitationToken)
       .is('used_at', null)
       .gt('expires_at', new Date().toISOString())
       .single();
 
-    if (invitationError || !invitation) {
+    if (invitationError || !invitationData) {
+      console.error('Invitation query error:', invitationError);
       throw new Error("Invalid or expired invitation");
     }
+
+    // Get the board details separately
+    const { data: boardData, error: boardError } = await supabase
+      .from('boards')
+      .select('id, name, slug')
+      .eq('id', invitationData.board_id)
+      .single();
+
+    if (boardError || !boardData) {
+      console.error('Board query error:', boardError);
+      throw new Error("Failed to load board information");
+    }
+
+    // Combine the data
+    const invitation = {
+      ...invitationData,
+      boards: boardData
+    };
 
     // Verify the invitation is for the current user
     if (invitation.email !== user.email) {
